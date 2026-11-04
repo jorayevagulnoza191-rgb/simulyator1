@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Silindr yoyilmasi simulyatori</title>
+<style>
+:root{--bg:#fff;--fg:#1c1c1e;--mu:#6b6b70;--card:#f3f3f5;--ln:#c9c9ce;--H:#1d6fd8;--V:#d6402f;--P:#8a5cf6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--fg:#f1f1f3;--mu:#9a9aa2;--card:#1d1d21;--ln:#3a3a40;--H:#5aa2ff;--V:#ff7a68;--P:#a98bff}}
+:root[data-theme="dark"]{--bg:#121214;--fg:#f1f1f3;--mu:#9a9aa2;--card:#1d1d21;--ln:#3a3a40;--H:#5aa2ff;--V:#ff7a68;--P:#a98bff}
+html,body{height:auto}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,sans-serif}
+main{max-width:760px;margin:0 auto;padding:14px}
+h1{font-size:19px;margin:4px 0 2px}
+p.s{margin:0 0 10px;color:var(--mu);font-size:13px}
+.card{background:var(--card);border-radius:14px;padding:10px;margin-bottom:12px}
+canvas{display:block;width:100%;border-radius:10px;touch-action:none}
+#c3{aspect-ratio:4/3}#cn{aspect-ratio:1/1}
+h2{font-size:14px;margin:0 0 6px}
+.row{display:grid;grid-template-columns:120px 1fr 48px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+input[type=range]{width:100%}
+button{font:inherit;font-size:13px;padding:6px 14px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--fg);margin-top:6px}
+#info{font-size:13px;color:var(--mu);margin-top:6px}
+#info b{color:var(--fg)}
+</style></head><body><main>
+<h1>Silindr yon sirtining yoyilmasi</h1>
+<p class="s">Silindrning yon sirti yoyilsa, toʻgʻri toʻrtburchak hosil boʻladi, ikkala asos esa doira boʻlib yoniga yoyiladi. “Yoyish” sliderini suring yoki ▶ tugmasini bosing. 3D ni aylantirish mumkin.</p>
+<div class="card"><h2>3D: silindr → yoyilma</h2><canvas id="c3"></canvas></div>
+<div class="card" id="ctl"></div>
+<div class="card"><h2>Yoyilma (tekislikdagi shakl)</h2><canvas id="cn"></canvas><div id="info"></div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const S={R:2,H:5,t:0,yaw:25,pitch:40,play:false,dir:1};
+const defs=[["R","Asos radiusi r",1,3,.25],["H","Balandlik H",1,8,.5],["t","Yoyish",0,1,.01],["yaw","Burilish",0,360,1],["pitch","Qiyalik",10,75,1]];
+const ctl=$("ctl");
+defs.forEach(([k,n,mn,mx,st])=>{const r=document.createElement("div");r.className="row";r.innerHTML=`<span>${n}</span><input type="range" id="s_${k}" min="${mn}" max="${mx}" step="${st}" value="${S[k]}"><b id="v_${k}"></b>`;ctl.appendChild(r);r.querySelector("input").oninput=e=>{S[k]=+e.target.value;S.play=false;pb.textContent="▶ Animatsiya";render()}});
+const pb=document.createElement("button");pb.textContent="▶ Animatsiya";ctl.appendChild(pb);
+pb.onclick=()=>{S.play=!S.play;pb.textContent=S.play?"⏸ Toʻxtatish":"▶ Animatsiya"};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function fit(c){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const g=c.getContext("2d");g.setTransform(d,0,0,d,0,0);return[g,r.width,r.height]}
+function poly(g,p,f,fa,s,lw,sa){g.beginPath();p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();if(f){g.globalAlpha=fa;g.fillStyle=f;g.fill()}if(s){g.globalAlpha=sa==null?1:sa;g.strokeStyle=s;g.lineWidth=lw||1;g.stroke()}g.globalAlpha=1}
+function ln(g,a,b,c,lw,al){g.globalAlpha=al==null?1:al;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle=c;g.lineWidth=lw||1;g.stroke();g.globalAlpha=1}
+function tx(g,t,p,c,sz){g.fillStyle=c;g.font=`600 ${sz||12}px system-ui,sans-serif`;g.fillText(t,p[0],p[1])}
+const nz=v=>+v.toFixed(2);
+function draw3(){
+ const[g,w,h]=fit($("c3")),th=S.yaw*Math.PI/180,ph=S.pitch*Math.PI/180,co=Math.cos(th),si=Math.sin(th),cp=Math.cos(ph),sp=Math.sin(ph);
+ const{R,H,t}=S,Lw=2*Math.PI*R,ext=Math.max(Lw,H+2*R+2),sc=Math.min(w,h)/(ext*1.45);
+ const Rr=(x,y,z)=>[x*co-y*si,-(z*cp-(x*si+y*co)*sp)],c0=Rr(0,(H+R)/2,H/4);
+ const P=(x,y,z)=>{const r=Rr(x,y,z);return[w/2+(r[0]-c0[0])*sc,h/2+(r[1]-c0[1])*sc]};
+ const dep=(x,y,z)=>(x*si+y*co)*cp+z*sp,Pa=q=>P(q[0],q[1],q[2]);
+ const Hc=css("--H"),Vc=css("--V"),Pc=css("--P"),fg=css("--fg");
+ const al=Math.PI/2*t,ca=Math.cos(al),sa=Math.sin(al),wv=[0,sa,ca],mv=[0,ca,-sa],psi=Math.max(2*Math.PI*(1-t),1e-4),rho=Lw/psi;
+ const C=s=>{const q=s/rho,k=2*rho*Math.pow(Math.sin(q/2),2);return[rho*Math.sin(q),k*mv[1],k*mv[2]]};
+ const N=72,B=[],T=[],items=[];
+ for(let i=0;i<=N;i++){const c=C(-Lw/2+Lw*i/N);B.push(c);T.push([c[0]+H*wv[0],c[1]+H*wv[1],c[2]+H*wv[2]])}
+ for(let i=0;i<N;i++){const q=[B[i],B[i+1],T[i+1],T[i]],m=[0,1,2].map(k=>(q[0][k]+q[1][k]+q[2][k]+q[3][k])/4);items.push({d:dep(m[0],m[1],m[2]),pts:q,y:0})}
+ const eb=[0,Math.cos(Math.PI*t),-Math.sin(Math.PI*t)],db=[],dt=[];
+ for(let i=0;i<64;i++){const a=i/64*2*Math.PI,u=1+Math.sin(a);db.push([R*Math.cos(a),R*eb[1]*u,R*eb[2]*u]);dt.push([R*Math.cos(a),H*sa+R*u,H*ca])}
+ items.push({d:dep(0,R*eb[1],R*eb[2]),pts:db,y:1},{d:dep(0,H*sa+R,H*ca),pts:dt,y:1});
+ items.sort((u,v)=>u.d-v.d);
+ items.forEach(it=>it.y?poly(g,it.pts.map(Pa),Hc,.3,Hc,1.8):poly(g,it.pts.map(Pa),Pc,.38,Pc,.7,.6));
+ [B,T].forEach(A=>{g.beginPath();A.forEach((q,i)=>{const p=Pa(q);i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1])});g.strokeStyle=fg;g.lineWidth=1.6;g.stroke()});
+ ln(g,Pa(B[0]),Pa(T[0]),Vc,2.4);ln(g,Pa(B[N]),Pa(T[N]),Vc,2.4);
+}
+function drawN(){
+ const[g,w,h]=fit($("cn")),{R,H}=S,Lw=2*Math.PI*R,tt=.3*R,fw=.5*R+.3;
+ const Hc=css("--H"),Pc=css("--P"),fg=css("--fg"),mu=css("--mu");
+ const bw=Lw+fw,bh=H+4*R,sc=Math.min((w-70)/bw,(h-50)/bh),L0=(w-bw*sc)/2+22,y0=(h-bh*sc)/2+2*R*sc,x1=L0+Lw*sc,y1=y0+H*sc,cx=L0+Lw*sc/2;
+ const ct=[cx,y0-R*sc],cb=[cx,y1+R*sc];
+ const ah=(a,b,c)=>{const an=Math.atan2(b[1]-a[1],b[0]-a[0]),s=9;g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0]-s*Math.cos(an-.3),b[1]-s*Math.sin(an-.3));g.lineTo(b[0]-s*Math.cos(an+.3),b[1]-s*Math.sin(an+.3));g.closePath();g.fillStyle=c;g.fill()};
+ poly(g,[[L0,y0],[x1,y0],[x1,y1],[L0,y1]],Pc,.3,Pc,2);
+ poly(g,[[x1,y0],[x1+fw*sc,y0+fw*sc*.5],[x1+fw*sc,y1-fw*sc*.5],[x1,y1]],Pc,.15,fg,1.2);
+ const N=Math.max(8,Math.round(Lw/1.2)),dc=2*Math.PI/N;
+ [[ct,-.45],[cb,.2]].forEach(([c,k0])=>{
+  g.beginPath();g.arc(c[0],c[1],R*sc,0,7);g.globalAlpha=.2;g.fillStyle=Hc;g.fill();g.globalAlpha=1;g.strokeStyle=Hc;g.lineWidth=2;g.stroke();
+  const Qc=(r,a)=>[c[0]+r*Math.cos(a)*sc,c[1]+r*Math.sin(a)*sc];
+  for(let k=0;k<3;k++){const a0=k0*Math.PI+dc*k;poly(g,[Qc(R,a0),Qc(R+tt,a0+dc/2),Qc(R,a0+dc)],Pc,.18,fg,1.2);if(k==1)tx(g,"t",Qc(R+tt*2.2,a0+dc/2),fg,13)}
+  const p1=Qc(R,Math.PI-.25),p2=Qc(R,-.25);ln(g,p1,p2,fg,1.5);ah(p2,p1,fg);ah(p1,p2,fg);tx(g,"d",[c[0]-4,c[1]-10],fg,14)});
+ g.setLineDash([9,3,2,3]);ln(g,[cx,ct[1]-R*sc-14],[cx,cb[1]+R*sc+14],mu,1);[ct,cb].forEach(c=>ln(g,[c[0]-R*sc-14,c[1]],[c[0]+R*sc+14,c[1]],mu,1));g.setLineDash([]);
+ const ym=y0+H*sc*.5;ln(g,[L0,ym],[x1,ym],fg,1.3);ah([x1,ym],[L0,ym],fg);ah([L0,ym],[x1,ym],fg);g.textAlign="center";tx(g,"πd = "+nz(Lw),[cx+30,ym-6],fg,13);g.textAlign="left";
+ const xh=L0-12;ln(g,[xh,y0],[xh,y1],fg,1.3);ah([xh,y1],[xh,y0],fg);ah([xh,y0],[xh,y1],fg);ln(g,[xh-6,y0],[L0,y0],mu,1);ln(g,[xh-6,y1],[L0,y1],mu,1);tx(g,"H",[xh-14,(y0+y1)/2+5],fg,14);
+ $("info").innerHTML=`Yon sirt: toʻgʻri toʻrtburchak <b>πd × H = ${nz(Lw)} × ${nz(H)}</b> · asoslar: ikkita doira <b>d = 2r = ${nz(2*R)}</b><br>Toʻliq sirt yuzi <b>S = 2πr(r+H) = ${nz(Lw*(R+H))}</b> · tish qadami <b>t ≈ ${nz(Lw/N)}</b>`;
+}
+function render(){defs.forEach(([k])=>{$("v_"+k).textContent=nz(S[k]);$("s_"+k).value=S[k]});draw3();drawN()}
+let dr=null;const c3=$("c3");
+c3.onpointerdown=e=>{dr=[e.clientX,e.clientY];c3.setPointerCapture(e.pointerId)};
+c3.onpointermove=e=>{if(!dr)return;S.yaw=(S.yaw+(e.clientX-dr[0])*.5+360)%360;S.pitch=Math.max(10,Math.min(75,S.pitch+(e.clientY-dr[1])*.3));dr=[e.clientX,e.clientY];render()};
+c3.onpointerup=()=>dr=null;
+(function loop(){if(S.play){S.t+=S.dir*.006;if(S.t>=1){S.t=1;S.dir=-1}if(S.t<=0){S.t=0;S.dir=1}render()}requestAnimationFrame(loop)})();
+addEventListener("resize",render);render();
+</script></body></html>
