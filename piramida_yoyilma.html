@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Piramida yoyilmasi simulyatori</title>
+<style>
+:root{--bg:#fff;--fg:#1c1c1e;--mu:#6b6b70;--card:#f3f3f5;--ln:#c9c9ce;--H:#1d6fd8;--V:#d6402f;--P:#8a5cf6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--fg:#f1f1f3;--mu:#9a9aa2;--card:#1d1d21;--ln:#3a3a40;--H:#5aa2ff;--V:#ff7a68;--P:#a98bff}}
+:root[data-theme="dark"]{--bg:#121214;--fg:#f1f1f3;--mu:#9a9aa2;--card:#1d1d21;--ln:#3a3a40;--H:#5aa2ff;--V:#ff7a68;--P:#a98bff}
+html,body{height:auto}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,sans-serif}
+main{max-width:760px;margin:0 auto;padding:14px}
+h1{font-size:19px;margin:4px 0 2px}
+p.s{margin:0 0 10px;color:var(--mu);font-size:13px}
+.card{background:var(--card);border-radius:14px;padding:10px;margin-bottom:12px}
+canvas{display:block;width:100%;border-radius:10px;touch-action:none}
+#c3{aspect-ratio:4/3}#cn{aspect-ratio:1/1}
+h2{font-size:14px;margin:0 0 6px}
+.row{display:grid;grid-template-columns:120px 1fr 48px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+input[type=range]{width:100%}
+button{font:inherit;font-size:13px;padding:6px 14px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--fg);margin-top:6px}
+#info{font-size:13px;color:var(--mu);margin-top:6px}
+#info b{color:var(--fg)}
+</style></head><body><main>
+<h1>Kvadrat piramida yon sirtining yoyilmasi</h1>
+<p class="s">Piramidaning toʻrtta yon yoqi asos qirralari boʻylab ochilib, tekislikka yoyiladi va “xoch” shaklidagi yoyilma hosil boʻladi. “Yoyish” sliderini suring yoki ▶ tugmasini bosing. 3D ni aylantirish mumkin.</p>
+<div class="card"><h2>3D: piramida → yoyilma</h2><canvas id="c3"></canvas></div>
+<div class="card" id="ctl"></div>
+<div class="card"><h2>Yoyilma (tekislikdagi shakl)</h2><canvas id="cn"></canvas><div id="info"></div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const S={a:4,H:5,t:0,yaw:30,pitch:35,play:false,dir:1};
+const defs=[["a","Asos tomoni a",2,8,.5],["H","Balandlik H",1,9,.5],["t","Yoyish",0,1,.01],["yaw","Burilish",0,360,1],["pitch","Qiyalik",10,75,1]];
+const ctl=$("ctl");
+defs.forEach(([k,n,mn,mx,st])=>{const r=document.createElement("div");r.className="row";r.innerHTML=`<span>${n}</span><input type="range" id="s_${k}" min="${mn}" max="${mx}" step="${st}" value="${S[k]}"><b id="v_${k}"></b>`;ctl.appendChild(r);r.querySelector("input").oninput=e=>{S[k]=+e.target.value;S.play=false;pb.textContent="▶ Animatsiya";render()}});
+const pb=document.createElement("button");pb.textContent="▶ Animatsiya";ctl.appendChild(pb);
+pb.onclick=()=>{S.play=!S.play;pb.textContent=S.play?"⏸ Toʻxtatish":"▶ Animatsiya"};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function fit(c){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const g=c.getContext("2d");g.setTransform(d,0,0,d,0,0);return[g,r.width,r.height]}
+function poly(g,p,f,fa,s,lw,sa){g.beginPath();p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();if(f){g.globalAlpha=fa;g.fillStyle=f;g.fill()}if(s){g.globalAlpha=sa==null?1:sa;g.strokeStyle=s;g.lineWidth=lw||1;g.stroke()}g.globalAlpha=1}
+function ln(g,a,b,c,lw,al){g.globalAlpha=al==null?1:al;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle=c;g.lineWidth=lw||1;g.stroke();g.globalAlpha=1}
+function tx(g,t,p,c,sz){g.fillStyle=c;g.font=`600 ${sz||12}px system-ui,sans-serif`;g.fillText(t,p[0],p[1])}
+const nz=v=>+v.toFixed(2);
+const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
+function draw3(){
+ const[g,w,h]=fit($("c3")),th=S.yaw*Math.PI/180,ph=S.pitch*Math.PI/180,co=Math.cos(th),si=Math.sin(th),cp=Math.cos(ph),sp=Math.sin(ph);
+ const{a,H,t}=S,s=Math.hypot(H,a/2),th0=Math.atan2(H,a/2),phi=th0+(Math.PI-th0)*t;
+ const ext=Math.max(a,H)*1.3*(1-t)+(a+2*s)*t,sc=Math.min(w,h)/(ext*1.5);
+ const Rr=(x,y,z)=>[x*co-y*si,-(z*cp-(x*si+y*co)*sp)],c0=Rr(0,0,(1-t)*H/2);
+ const P=(x,y,z)=>{const r=Rr(x,y,z);return[w/2+(r[0]-c0[0])*sc,h/2+(r[1]-c0[1])*sc]},Pa=q=>P(q[0],q[1],q[2]);
+ const dep=(x,y,z)=>(x*si+y*co)*cp+z*sp;
+ const Hc=css("--H"),Vc=css("--V"),Pc=css("--P"),fg=css("--fg");
+ const q=a/2;
+ poly(g,[[-q,-q,0],[q,-q,0],[q,q,0],[-q,q,0]].map(Pa),Hc,.3,fg,1.8);
+ const items=[];
+ DIRS.forEach(([dx,dy])=>{
+  const tx_=-dy,ty=dx,M=[dx*q,dy*q,0],c1=[M[0]-tx_*q,M[1]-ty*q,0],c2=[M[0]+tx_*q,M[1]+ty*q,0];
+  const ap=[M[0]-dx*s*Math.cos(phi),M[1]-dy*s*Math.cos(phi),s*Math.sin(phi)];
+  const m=[(c1[0]+c2[0]+ap[0])/3,(c1[1]+c2[1]+ap[1])/3,(c1[2]+c2[2]+ap[2])/3];
+  items.push({d:dep(m[0],m[1],m[2]),pts:[c1,c2,ap]})});
+ items.sort((u,v)=>u.d-v.d);
+ items.forEach(it=>{poly(g,it.pts.map(Pa),Pc,.4,Pc,.8,.7);ln(g,Pa(it.pts[0]),Pa(it.pts[2]),Vc,2);ln(g,Pa(it.pts[1]),Pa(it.pts[2]),Vc,2);ln(g,Pa(it.pts[0]),Pa(it.pts[1]),fg,1.6)});
+}
+function drawN(){
+ const[g,w,h]=fit($("cn")),{a,H}=S,s=Math.hypot(H,a/2),l=Math.hypot(s,a/2),fl=.22*a+.2,Lw=a+2*s+2*fl;
+ const Hc=css("--H"),Vc=css("--V"),Pc=css("--P"),fg=css("--fg"),mu=css("--mu");
+ const sc=Math.min((w-50)/Lw,(h-50)/Lw),cx=w/2,cy=h/2,C=(p)=>[cx+p[0]*sc,cy+p[1]*sc],q=a/2;
+ const ah=(a0,b,c)=>{const an=Math.atan2(b[1]-a0[1],b[0]-a0[0]),k=9;g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0]-k*Math.cos(an-.3),b[1]-k*Math.sin(an-.3));g.lineTo(b[0]-k*Math.cos(an+.3),b[1]-k*Math.sin(an+.3));g.closePath();g.fillStyle=c;g.fill()};
+ g.setLineDash([9,3,2,3]);ln(g,[cx,cy-(q+s+fl)*sc-10],[cx,cy+(q+s+fl)*sc+10],mu,1);ln(g,[cx-(q+s+fl)*sc-10,cy],[cx+(q+s+fl)*sc+10,cy],mu,1);g.setLineDash([]);
+ DIRS.forEach(([dx,dy],k)=>{
+  const tx_=-dy,ty=dx,M=[dx*q,dy*q],P0=[M[0]-tx_*q,M[1]-ty*q],P1=[M[0]+tx_*q,M[1]+ty*q],A=[M[0]+dx*s,M[1]+dy*s];
+  const e=[A[0]-P1[0],A[1]-P1[1]],L=Math.hypot(e[0],e[1]),u=[e[0]/L,e[1]/L];let n=[-u[1],u[0]];
+  const g0=[(P0[0]+P1[0]+A[0])/3,(P0[1]+P1[1]+A[1])/3],md=[(P1[0]+A[0])/2,(P1[1]+A[1])/2];
+  if(n[0]*(md[0]-g0[0])+n[1]*(md[1]-g0[1])<0)n=[-n[0],-n[1]];
+  poly(g,[P1,[P1[0]+n[0]*fl+u[0]*fl*.6,P1[1]+n[1]*fl+u[1]*fl*.6],[A[0]+n[0]*fl-u[0]*fl*.6,A[1]+n[1]*fl-u[1]*fl*.6],A].map(C),Pc,.15,fg,1.2);
+  poly(g,[P0,P1,A].map(C),Pc,.3,Pc,2);
+  if(k==0){ln(g,C(A),C(P1),Vc,2.4);ln(g,C(A),C(P0),Vc,2.4)}});
+ poly(g,[[-q,-q],[q,-q],[q,q],[-q,q]].map(C),Hc,.25,Hc,2.2);
+ // o'lchamlar
+ const am=C([-q,0]),bm=C([q,0]);ln(g,am,bm,fg,1.3);ah(bm,am,fg);ah(am,bm,fg);g.textAlign="center";tx(g,"a",[cx,cy-6],fg,14);
+ const t0=C([0,-q]),t1=C([0,-q-s]),off=C([0,0]);
+ const ox=14;ln(g,[t0[0]+ox,t0[1]],[t1[0]+ox,t1[1]],fg,1.3);ah([t0[0]+ox,t0[1]],[t1[0]+ox,t1[1]],fg);ah([t1[0]+ox,t1[1]],[t0[0]+ox,t0[1]],fg);
+ g.textAlign="left";tx(g,"s",[t0[0]+ox+6,(t0[1]+t1[1])/2+4],fg,14);
+ const lm=C([-q/2,-q-s/2]);tx(g,"l",[lm[0]-16,lm[1]],fg,14);
+ g.textAlign="left";
+ $("info").innerHTML=`Yon yoq balandligi <b>s = √(H²+(a/2)²) = ${nz(s)}</b> · yon qirra <b>l = √(s²+(a/2)²) = ${nz(l)}</b><br>Yon sirt <b>S = 2·a·s = ${nz(2*a*s)}</b> · toʻliq sirt <b>S = a²+2as = ${nz(a*a+2*a*s)}</b>`;
+}
+function render(){defs.forEach(([k])=>{$("v_"+k).textContent=nz(S[k]);$("s_"+k).value=S[k]});draw3();drawN()}
+let dr=null;const c3=$("c3");
+c3.onpointerdown=e=>{dr=[e.clientX,e.clientY];c3.setPointerCapture(e.pointerId)};
+c3.onpointermove=e=>{if(!dr)return;S.yaw=(S.yaw+(e.clientX-dr[0])*.5+360)%360;S.pitch=Math.max(10,Math.min(75,S.pitch+(e.clientY-dr[1])*.3));dr=[e.clientX,e.clientY];render()};
+c3.onpointerup=()=>dr=null;
+(function loop(){if(S.play){S.t+=S.dir*.006;if(S.t>=1){S.t=1;S.dir=-1}if(S.t<=0){S.t=0;S.dir=1}render()}requestAnimationFrame(loop)})();
+addEventListener("resize",render);render();
+</script></body></html>
