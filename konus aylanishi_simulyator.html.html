@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Konus sirti hosil bo’lishi — simulyator</title>
+<style>
+:root{--bg:#f3f6fa;--panel:#ffffff;--ink:#16202c;--mut:#5a6878;--line:#d5dde7;--axis:#d6336c;--gen:#e8590c;--surf:#2f9e44;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1720;--panel:#18222e;--ink:#e8eef5;--mut:#9aa9b9;--line:#2b3846;--axis:#ff6b9a;--gen:#ffa94d;--surf:#69db7c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1720;--panel:#18222e;--ink:#e8eef5;--mut:#9aa9b9;--line:#2b3846;--axis:#ff6b9a;--gen:#ffa94d;--surf:#69db7c;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:4px 0}
+p.lead{margin:0 0 14px;color:var(--mut);max-width:70ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+canvas{width:100%;height:auto;aspect-ratio:1/1;display:block;touch-action:none;cursor:grab}
+.row{margin:10px 0}
+.row label{display:flex;justify-content:space-between;font-size:.9rem;color:var(--mut)}
+.row b{color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--surf)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button.main{background:var(--surf);border-color:var(--surf);color:#0f1720;font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gen);outline-offset:2px}
+.chk{display:flex;align-items:center;gap:8px;font-size:.92rem;margin:6px 0}
+.f{font-family:Consolas,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:.88rem;margin-top:8px;overflow-x:auto}
+.leg span{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.leg div{font-size:.88rem;margin:3px 0}
+h2{font-size:1rem;margin:0 0 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Aylanish sirti: konus</h1>
+<p class="lead">To’g’ri chiziq (yasovchi) qo’zg’almas vertikal <b>Z o’qini kesib o’tgan</b> holda shu o’q atrofida aylantirilsa, konus sirti hosil bo’ladi. Kesishgan nuqta konusning uchi (S) bo’ladi. Chizmani sichqoncha yoki barmoq bilan burib ko’ring.</p>
+<div class="grid">
+<div class="card"><canvas id="cv" width="640" height="640" aria-label="Konus hosil bo’lishi chizmasi"></canvas></div>
+<div>
+<div class="card">
+<div class="row"><label>Aylanish burchagi φ <b id="vphi">0°</b></label><input id="phi" type="range" min="0" max="360" value="0"></div>
+<div class="row"><label>Asos radiusi R <b id="vr">100</b></label><input id="r" type="range" min="40" max="160" value="100"></div>
+<div class="row"><label>Balandlik h (SO) <b id="vh">200</b></label><input id="h" type="range" min="80" max="300" value="200"></div>
+<div class="row"><label>Tezlik <b id="vs">1.0×</b></label><input id="s" type="range" min="2" max="40" value="10"></div>
+<div class="btns"><button class="main" id="play">⏸ To’xtatish</button><button id="reset">Boshidan</button></div>
+<div class="chk"><input type="checkbox" id="trail" checked><label for="trail">Iz (hosil bo’lgan sirt)ni ko’rsat</label></div>
+<div class="chk"><input type="checkbox" id="top" checked><label for="top">Asos aylanasi</label></div>
+<div class="chk"><input type="checkbox" id="mirror"><label for="mirror">Chiziqning davomi (ikki pallali konus)</label></div>
+</div>
+<div class="card" style="margin-top:14px">
+<h2>Belgilar</h2>
+<div class="leg">
+<div><span style="background:var(--axis)"></span>Z o’qi — aylanish o’qi (qo’zg’almas)</div>
+<div><span style="background:var(--gen)"></span>SA — yasovchi (o’qni S nuqtada kesadi)</div>
+<div><span style="background:var(--axis)"></span>S — konus uchi, O — asos markazi</div>
+<div><span style="background:var(--surf)"></span>Yasovchi qoldirgan iz — konus sirti</div>
+</div>
+<div class="f" id="info"></div>
+<p style="margin:8px 0 0;font-size:.9rem;color:var(--mut)" id="note"></p>
+</div>
+</div>
+</div>
+</div>
+<script>
+const cv=document.getElementById('cv'),c=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+let phi=0,playing=true,yaw=0.7,elev=0.45,R=100,H=200,speed=1,drag=null;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function P(x,y,z){const cy=Math.cos(yaw),sy=Math.sin(yaw);const x1=x*cy-y*sy,y1=x*sy+y*cy;
+ return [320+x1, 340-((z-H/2)*Math.cos(elev)+y1*Math.sin(elev))];}
+function line(a,b,col,w,al,dash){c.beginPath();c.moveTo(...a);c.lineTo(...b);c.strokeStyle=col;c.lineWidth=w;c.globalAlpha=al==null?1:al;c.setLineDash(dash||[]);c.stroke();c.setLineDash([]);c.globalAlpha=1;}
+function arc(r,z,to,col,w,al){c.beginPath();for(let a=0;a<=to;a+=0.04){const p=P(r*Math.cos(a),r*Math.sin(a),z);a===0?c.moveTo(...p):c.lineTo(...p);}
+ c.lineTo(...P(r*Math.cos(to),r*Math.sin(to),z));c.strokeStyle=col;c.lineWidth=w;c.globalAlpha=al;c.stroke();c.globalAlpha=1;}
+function dot(p,col,txt,dx,dy,r){c.beginPath();c.arc(p[0],p[1],r,0,7);c.fillStyle=col;c.fill();c.font="bold 19px Segoe UI,Arial";c.fillText(txt,p[0]+dx,p[1]+dy);}
+function draw(){
+ c.clearRect(0,0,640,640);
+ const surf=css('--surf'),gen=css('--gen'),axis=css('--axis'),mut=css('--mut'),ink=css('--ink');
+ const th=phi*Math.PI/180, mir=$('mirror').checked, ext=mir?H:0;
+ arc(R,0,Math.PI*2,mut,1,.35);
+ line(P(0,0,-ext-20),P(0,0,H+40),axis,3);
+ c.fillStyle=axis;c.font="bold 18px Segoe UI,Arial";const zp=P(0,0,H+40);c.fillText("Z",zp[0]+8,zp[1]+4);
+ const S=[0,0,H];
+ if($('trail').checked){
+  for(let a=0;a<=th+1e-6;a+=Math.PI/90){
+   const f=th>0?a/th:1, ax=R*Math.cos(a), ay=R*Math.sin(a);
+   line(P(...S),P(ax,ay,0),surf,2,.18+.25*f);
+   if(mir)line(P(...S),P(-ax,-ay,2*H),surf,2,.1+.15*f);
+  }
+ }
+ if($('top').checked){arc(R,0,th,surf,2.5,.9);if(mir)arc(R,2*H,th,surf,2.5,.5);}
+ const ax=R*Math.cos(th),ay=R*Math.sin(th);
+ // radius OA and height SO
+ line(P(0,0,0),P(ax,ay,0),ink,1.5,.7,[5,4]);
+ const m=P(ax/2,ay/2,0);c.fillStyle=ink;c.font="16px Segoe UI,Arial";c.fillText("R",m[0]+4,m[1]+16);
+ line(P(...S),P(0,0,0),ink,1.2,.5,[2,4]);
+ // generatrix
+ if(mir)line(P(...S),P(-ax,-ay,2*H),gen,3,.55);
+ line(P(...S),P(ax,ay,0),gen,5);
+ dot(P(ax,ay,0),gen,"A",8,22,6);
+ dot(P(...S),axis,"S",-22,-8,6);
+ dot(P(0,0,0),axis,"O",-24,20,5);
+ const lab=P(ax/2,ay/2,H/2);c.fillStyle=gen;c.font="bold 16px Segoe UI,Arial";c.fillText("SA",lab[0]+12,lab[1]);
+ $('vphi').textContent=Math.round(phi)+"°";
+ const l=Math.sqrt(R*R+H*H),al=Math.atan(R/H)*180/Math.PI;
+ $('info').innerHTML="x = r·cos φ,  y = r·sin φ<br>r = R·(h − z)/h,  0 ≤ z ≤ h<br><b>x² + y² = (R/h)²·(h − z)²</b><br>SA = l = "+l.toFixed(0)+",  α = "+al.toFixed(1)+"°";
+ $('note').textContent=phi>=359?"To’liq aylanish: yasovchi 360° aylandi va butun konus sirti hosil bo’ldi.":phi<1?"Yasovchi Z o’qini S nuqtada kesib turibdi. A nuqta asos aylanasida.":"Yasovchining S uchi qo’zg’almaydi, A uchi esa asos aylanasi bo’ylab harakatlanadi.";
+}
+let last=performance.now();
+function tick(t){const dt=(t-last)/1000;last=t;
+ if(playing){phi+=60*speed*dt;if(phi>=360){phi=360;playing=false;$('play').textContent="▶ Davom ettirish";}$('phi').value=phi;}
+ draw();requestAnimationFrame(tick);}
+$('phi').oninput=e=>{phi=+e.target.value;playing=false;$('play').textContent="▶ Davom ettirish"};
+$('r').oninput=e=>{R=+e.target.value;$('vr').textContent=R};
+$('h').oninput=e=>{H=+e.target.value;$('vh').textContent=H};
+$('s').oninput=e=>{speed=e.target.value/10;$('vs').textContent=speed.toFixed(1)+"×"};
+$('play').onclick=()=>{if(phi>=360)phi=0;playing=!playing;$('play').textContent=playing?"⏸ To’xtatish":"▶ Davom ettirish"};
+$('reset').onclick=()=>{phi=0;$('phi').value=0;playing=true;$('play').textContent="⏸ To’xtatish"};
+cv.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'});
+cv.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag[0])*0.01;elev=Math.max(0.05,Math.min(1.45,elev+(e.clientY-drag[1])*0.01));drag=[e.clientX,e.clientY]});
+cv.addEventListener('pointerup',()=>{drag=null;cv.style.cursor='grab'});
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
