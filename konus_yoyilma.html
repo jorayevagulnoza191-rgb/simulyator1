@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Konus yoyilmasi simulyatori</title>
+<style>
+:root{--bg:#fff;--fg:#1c1c1e;--mu:#6b6b70;--card:#f3f3f5;--ln:#c9c9ce;--H:#1d6fd8;--V:#d6402f;--P:#8a5cf6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--fg:#f1f1f3;--mu:#9a9aa2;--card:#1d1d21;--ln:#3a3a40;--H:#5aa2ff;--V:#ff7a68;--P:#a98bff}}
+:root[data-theme="dark"]{--bg:#121214;--fg:#f1f1f3;--mu:#9a9aa2;--card:#1d1d21;--ln:#3a3a40;--H:#5aa2ff;--V:#ff7a68;--P:#a98bff}
+html,body{height:auto}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,sans-serif}
+main{max-width:760px;margin:0 auto;padding:14px}
+h1{font-size:19px;margin:4px 0 2px}
+p.s{margin:0 0 10px;color:var(--mu);font-size:13px}
+.card{background:var(--card);border-radius:14px;padding:10px;margin-bottom:12px}
+canvas{display:block;width:100%;border-radius:10px;touch-action:none}
+#c3{aspect-ratio:4/3}#cn{aspect-ratio:1/1}
+h2{font-size:14px;margin:0 0 6px}
+.row{display:grid;grid-template-columns:120px 1fr 48px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+input[type=range]{width:100%}
+button{font:inherit;font-size:13px;padding:6px 14px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--fg);margin-top:6px}
+#info{font-size:13px;color:var(--mu);margin-top:6px}
+#info b{color:var(--fg)}
+</style></head><body><main>
+<h1>Konus yon sirtining yoyilmasi</h1>
+<p class="s">Konusning yon sirti tekislikka yoyilsa, doira sektori hosil boʻladi. “Yoyish” sliderini suring yoki ▶ tugmasini bosing. 3D ni aylantirish mumkin.</p>
+<div class="card"><h2>3D: konus → yoyilma</h2><canvas id="c3"></canvas></div>
+<div class="card" id="ctl"></div>
+<div class="card"><h2>Yoyilma (tekislikdagi shakl)</h2><canvas id="cn"></canvas><div id="info"></div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const S={R:3,H:6,t:0,yaw:30,pitch:35,play:false,dir:1};
+const defs=[["R","Asos radiusi r",1,6,.5],["H","Balandlik H",1,9,.5],["t","Yoyish",0,1,.01],["yaw","Burilish",0,360,1],["pitch","Qiyalik",10,75,1]];
+const ctl=$("ctl");
+defs.forEach(([k,n,mn,mx,st])=>{const r=document.createElement("div");r.className="row";r.innerHTML=`<span>${n}</span><input type="range" id="s_${k}" min="${mn}" max="${mx}" step="${st}" value="${S[k]}"><b id="v_${k}"></b>`;ctl.appendChild(r);r.querySelector("input").oninput=e=>{S[k]=+e.target.value;S.play=false;pb.textContent="▶ Animatsiya";render()}});
+const pb=document.createElement("button");pb.textContent="▶ Animatsiya";ctl.appendChild(pb);
+pb.onclick=()=>{S.play=!S.play;pb.textContent=S.play?"⏸ Toʻxtatish":"▶ Animatsiya"};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function fit(c){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;const g=c.getContext("2d");g.setTransform(d,0,0,d,0,0);return[g,r.width,r.height]}
+function poly(g,p,f,fa,s,lw,sa){g.beginPath();p.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();if(f){g.globalAlpha=fa;g.fillStyle=f;g.fill()}if(s){g.globalAlpha=sa==null?1:sa;g.strokeStyle=s;g.lineWidth=lw||1;g.stroke()}g.globalAlpha=1}
+function ln(g,a,b,c,lw,al){g.globalAlpha=al==null?1:al;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.strokeStyle=c;g.lineWidth=lw||1;g.stroke();g.globalAlpha=1}
+function tx(g,t,p,c,sz){g.fillStyle=c;g.font=`600 ${sz||12}px system-ui,sans-serif`;g.fillText(t,p[0],p[1])}
+const nz=v=>+v.toFixed(2);
+function draw3(){
+ const[g,w,h]=fit($("c3")),th=S.yaw*Math.PI/180,ph=S.pitch*Math.PI/180,co=Math.cos(th),si=Math.sin(th),cp=Math.cos(ph),sp=Math.sin(ph);
+ const Rr=(x,y,z)=>[x*co-y*si,-(z*cp-(x*si+y*co)*sp)],c0=Rr(0,0,2),sc=Math.min(w,h)/24;
+ const P=(x,y,z)=>{const r=Rr(x,y,z);return[w/2+(r[0]-c0[0])*sc,h/2+(r[1]-c0[1])*sc]};
+ const{R,H,t}=S,l=Math.hypot(R,H),phi=2*Math.PI*R/l,psi=2*Math.PI+(phi-2*Math.PI)*t,sb=phi/psi,cb=Math.sqrt(Math.max(0,1-sb*sb)),rho=l*sb,top=l*cb;
+ const Hc=css("--H"),Vc=css("--V"),Pc=css("--P"),fg=css("--fg");
+ poly(g,[P(-12,-12,0),P(12,-12,0),P(12,12,0),P(-12,12,0)],Hc,.08,Hc,1,.4);
+ {const c=Math.cos(Math.PI*t),s=Math.sin(Math.PI*t),cy=-rho+R*c,cz=-R*s,pts=[];
+  for(let i=0;i<64;i++){const a=i/64*2*Math.PI;pts.push(P(R*Math.cos(a),cy+R*Math.sin(a)*c,cz-R*Math.sin(a)*s))}
+  poly(g,pts,Hc,.3,Hc,2);const pc=P(0,cy,cz),pm=P(0,-rho,0);ln(g,pc,pm,Hc,1.5);
+  g.beginPath();g.arc(pm[0],pm[1],4,0,7);g.fillStyle=Hc;g.fill();tx(g,"asos doirasi",[pc[0]+6,pc[1]+14],Hc,12)}
+ const N=60,arc=[];for(let i=0;i<=N;i++){const a=-Math.PI/2-psi/2+psi*i/N;arc.push([rho*Math.cos(a),rho*Math.sin(a),0])}
+ const ap=[0,0,top],tr=[];
+ for(let i=0;i<N;i++){const a=arc[i],b=arc[i+1];tr.push({d:(a[0]+b[0])*si+(a[1]+b[1])*co,a,b})}
+ tr.sort((u,v)=>u.d-v.d);
+ tr.forEach(q=>poly(g,[P(...ap),P(...q.a),P(...q.b)],Pc,.38,Pc,.7,.6));
+ ln(g,P(...arc[0]),P(...ap),Vc,2.4);ln(g,P(...arc[N]),P(...ap),Vc,2.4);
+ for(let i=0;i<N;i++)ln(g,P(...arc[i]),P(...arc[i+1]),fg,1.6);
+ const pa=P(...ap);g.beginPath();g.arc(pa[0],pa[1],3.5,0,7);g.fillStyle=fg;g.fill();tx(g,"S",[pa[0]+6,pa[1]-6],fg,13);
+}
+function drawN(){
+ const[g,w,h]=fit($("cn")),{R,H}=S,l=Math.hypot(R,H),phi=2*Math.PI*R/l;
+ const Hc=css("--H"),Vc=css("--V"),Pc=css("--P"),fg=css("--fg"),mu=css("--mu");
+ const tt=.1*l,top=phi>Math.PI?-l*Math.cos(phi/2):0,hw=l*(phi>=Math.PI?1:Math.sin(phi/2)),bw=Math.max(2*hw,2*R),bh=top+l+tt+2*R;
+ const sc=Math.min((w-80)/bw,(h-50)/bh),ox=w/2,oy=(h-bh*sc)/2+top*sc;
+ const Q=(r,a)=>[ox+r*Math.sin(a)*sc,oy+r*Math.cos(a)*sc];
+ const arc=[];for(let i=0;i<=80;i++)arc.push(Q(l,-phi/2+phi*i/80));
+ poly(g,[Q(0,0),...arc],Pc,.3,Pc,2);
+ for(let i=0;i<=80;i+=4)ln(g,Q(0,0),arc[i],Pc,.8,.5);
+ ln(g,Q(0,0),arc[0],Vc,2.4);ln(g,Q(0,0),arc[80],Vc,2.4);
+ g.beginPath();arc.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.strokeStyle=fg;g.lineWidth=2;g.stroke();
+ const cc=Q(l+R,0);g.beginPath();g.arc(cc[0],cc[1],R*sc,0,7);g.globalAlpha=.2;g.fillStyle=Hc;g.fill();g.globalAlpha=1;g.strokeStyle=Hc;g.lineWidth=2;g.stroke();
+ const N=Math.max(8,Math.round(2*Math.PI*R/1.2)),da=phi/N,dc=2*Math.PI/N,Qc=(r,t)=>[cc[0]+r*Math.cos(t)*sc,cc[1]+r*Math.sin(t)*sc];
+ const ah=(a,b,c)=>{const an=Math.atan2(b[1]-a[1],b[0]-a[0]),s=9;g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0]-s*Math.cos(an-.3),b[1]-s*Math.sin(an-.3));g.lineTo(b[0]-s*Math.cos(an+.3),b[1]-s*Math.sin(an+.3));g.closePath();g.fillStyle=c;g.fill()};
+ const tri=(p,q,r_)=>poly(g,[p,q,r_],Pc,.18,fg,1.2);
+ for(let i=0;i<N;i++){const a=-phi/2+da*i;if(Math.abs(a+da/2)<da*1.1)continue;tri(Q(l,a),Q(l+tt,a+da/2),Q(l,a+da));if(i==2)tx(g,"t",Q(l+tt*2.1,a+da/2),fg,13)}
+ for(let k=0;k<3;k++){const t0=.25*Math.PI+dc*k;tri(Qc(R,t0),Qc(R+tt,t0+dc/2),Qc(R,t0+dc));if(k==1)tx(g,"t",Qc(R+tt*2.2,t0+dc/2),fg,13)}
+ g.setLineDash([9,3,2,3]);ln(g,[ox,oy-14],[ox,cc[1]+R*sc+18],mu,1);ln(g,[cc[0]-R*sc-18,cc[1]],[cc[0]+R*sc+18,cc[1]],mu,1);g.setLineDash([]);
+ {const p1=Qc(R,Math.PI-.25),p2=Qc(R,-.25);ln(g,p1,p2,fg,1.5);ah(p2,p1,fg);ah(p1,p2,fg);tx(g,"d",[cc[0]-4,cc[1]-10],fg,14)}
+ g.beginPath();g.arc(ox,oy,Math.min(.3*l,2)*sc,Math.PI/2-phi/2,Math.PI/2+phi/2);g.strokeStyle=Vc;g.lineWidth=1.5;g.stroke();
+ g.textAlign="center";tx(g,"α = d·180°/R = "+nz(phi*180/Math.PI)+"°",[ox,oy+Math.min(.3*l,2)*sc+18],Vc,13);g.textAlign="left";
+ {const a0=Q(0,0),b0=arc[0],v=[b0[0]-a0[0],b0[1]-a0[1]],Ln=Math.hypot(v[0],v[1]);let n=[v[1]/Ln,-v[0]/Ln];const md=arc[40];if(n[0]*(md[0]-a0[0])+n[1]*(md[1]-a0[1])>0)n=[-n[0],-n[1]];
+  const o=26,p=[a0[0]+n[0]*o,a0[1]+n[1]*o],q=[b0[0]+n[0]*o,b0[1]+n[1]*o];
+  ln(g,a0,[a0[0]+n[0]*(o+6),a0[1]+n[1]*(o+6)],mu,1);ln(g,b0,[b0[0]+n[0]*(o+6),b0[1]+n[1]*(o+6)],mu,1);
+  ln(g,p,q,fg,1.3);ah(q,p,fg);ah(p,q,fg);tx(g,"R",[(p[0]+q[0])/2+n[0]*10-4,(p[1]+q[1])/2+n[1]*10+4],fg,14)}
+ tx(g,"S",[ox+6,oy-6],fg,13);
+ $("info").innerHTML=`Yasovchi <b>R = √(r²+H²) = ${nz(l)}</b> · asos diametri <b>d = 2r = ${nz(2*R)}</b><br>Burchak <b>α = d·180°/R = ${nz(phi*180/Math.PI)}°</b> · tish qadami <b>t ≈ ${nz(2*Math.PI*R/N)}</b>`;
+}
+function render(){defs.forEach(([k])=>{$("v_"+k).textContent=nz(S[k]);$("s_"+k).value=S[k]});draw3();drawN()}
+let dr=null;const c3=$("c3");
+c3.onpointerdown=e=>{dr=[e.clientX,e.clientY];c3.setPointerCapture(e.pointerId)};
+c3.onpointermove=e=>{if(!dr)return;S.yaw=(S.yaw+(e.clientX-dr[0])*.5+360)%360;S.pitch=Math.max(10,Math.min(75,S.pitch+(e.clientY-dr[1])*.3));dr=[e.clientX,e.clientY];render()};
+c3.onpointerup=()=>dr=null;
+(function loop(){if(S.play){S.t+=S.dir*.006;if(S.t>=1){S.t=1;S.dir=-1}if(S.t<=0){S.t=0;S.dir=1}render()}requestAnimationFrame(loop)})();
+addEventListener("resize",render);render();
+</script></body></html>
