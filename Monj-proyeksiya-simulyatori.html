@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Monj Proyeksiya Simulyatori</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: full-height 3D stage on the left, instrument panel on the right; stacks on phones.
+   One committed dark world (a drafting room at night), so every color is set explicitly. */
+:root{
+  --bg:#0a0f15; --surface:#111923; --surface-2:#172230; --line:#243242;
+  --text:#dce5ee; --mute:#8d9db0; --accent:#f2b84b; --accent-ink:#1a1205;
+  --plane-h:#4f8fd6; --plane-v:#46b394; --plane-w:#b384d6; --clay:#d98a52;
+  --font-display:'Chakra Petch',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--text); font:14px/1.45 var(--font-body);
+  padding-block:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;height:100%}
+.stage{position:relative;min-height:520px;min-width:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#9fd0f7}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 60%,rgba(10,40,80,.22))}
+canvas#c{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas#c:active{cursor:grabbing}
+.hud{position:absolute;left:16px;top:14px;right:16px;pointer-events:none;z-index:2;color:#0b1f33;text-shadow:0 1px 6px rgba(255,255,255,.7)}
+.hud h1{margin:0;font:600 19px/1.2 var(--font-display);letter-spacing:.02em}
+.hud p{margin:4px 0 0;max-width:46ch;color:#1b3856;font-size:13px}
+.note{position:absolute;left:16px;right:16px;bottom:14px;z-index:2;pointer-events:none;color:#8a2f00;font:500 12px/1.4 var(--font-mono);text-shadow:0 1px 6px rgba(255,255,255,.8)}
+.hint{position:absolute;right:16px;bottom:14px;z-index:2;color:#27486a;font-size:11.5px;pointer-events:none;text-align:right}
+.panel{min-height:0;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:20px;padding-right:2px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec h2{margin:0;font:600 11px/1 var(--font-display);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.seg button{border:0;background:transparent;color:var(--text);padding:8px 4px;border-radius:7px;cursor:pointer;font:600 13px/1.2 var(--font-display);letter-spacing:.03em}
+.seg button small{display:block;margin-top:2px;font:400 11px var(--font-body);color:var(--mute);letter-spacing:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button[aria-pressed="true"] small{color:#4a3510}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:baseline}
+.row label{color:var(--text);font-size:13px}
+.row output{font:500 12px var(--font-mono);color:var(--accent);font-variant-numeric:tabular-nums}
+.row input[type=range]{grid-column:1/-1;width:100%;margin:2px 0 0;accent-color:var(--accent)}
+.tg{display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer}
+.tg input{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.tgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.btn{border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:8px;padding:9px 12px;cursor:pointer;font:500 13px var(--font-body)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.coords{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:3px 10px;font:400 12px var(--font-mono);font-variant-numeric:tabular-nums;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.coords b{color:var(--accent);font-weight:500}
+.coords .hd{color:var(--mute);font-size:11px}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#b8c5d3}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{width:12px;height:12px;border-radius:3px;flex:none}
+.fail{position:absolute;inset:0;display:none;place-items:center;padding:24px;text-align:center;color:var(--mute);z-index:3}
+@media (max-width:820px){
+  html,body{height:auto}
+  .app{grid-template-columns:minmax(0,1fr);height:auto}
+  .stage{height:70vh;min-height:400px}
+  .panel{overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+.card{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.card strong{font:600 14px var(--font-display);letter-spacing:.02em}
+.card p{margin:0;color:#b8c5d3;font-size:12.5px}
+.props{display:grid;gap:2px;font:500 12px var(--font-mono);color:var(--accent);font-variant-numeric:tabular-nums}
+.tg.h span{color:#8fbaf0}.tg.v span{color:#7fd6bb}.tg.w span{color:#d2aef0}
+</style>
+
+<div class="app">
+  <main class="stage" id="stage">
+    <canvas id="c" aria-label="Uch oʻlchamli proyeksiya sahnasi"></canvas>
+    <div class="hud"><h1 id="hud-title"></h1><p id="hud-desc"></p></div>
+    <div class="note" id="note"></div>
+    <div class="hint">Aylantirish: sichqoncha yoki barmoq · Yaqinlashtirish: gʻildirak yoki ikki barmoq</div>
+    <div class="fail" id="fail">Bu brauzerda WebGL ishlamadi. Boshqa brauzerda oching.</div>
+  </main>
+
+  <aside class="panel" aria-label="Boshqaruv paneli">
+    <section class="sec">
+      <h2>Rejim</h2>
+      <div class="seg" id="modes">
+        <button data-mode="lamp" aria-pressed="true">Markaziy<small>fanar S</small></button>
+        <button data-mode="sun" aria-pressed="false">Qiyshiq<small>parallel</small></button>
+        <button data-mode="ortho" aria-pressed="false">Toʻgʻri<small>parallel, 90°</small></button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>Usul</h2>
+      <div class="card"><strong id="m-name"></strong><p id="m-rule"></p><div class="props" id="m-props"></div></div>
+    </section>
+
+    <section class="sec" id="sec-light">
+      <h2 id="light-title">Yoritish</h2>
+      <div class="sec" id="g-lamp"></div>
+      <div class="sec" id="g-sun"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Parallelepiped</h2>
+      <div class="sec" id="g-body"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Yomgʻir</h2>
+      <label class="tg"><input type="checkbox" id="t-rain"> Yomgʻir yogʻsin</label>
+      <div class="sec" id="g-rain"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Koʻrinish</h2>
+      <div class="sec" id="g-view"></div>
+      <div class="tgrid" id="g-toggles"></div>
+      <div class="btns">
+        <button class="btn primary" id="b-unfold">Epyurga yoyish</button>
+        <button class="btn" id="b-corner">Burchak koʻrinishi</button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>Uchlar koordinatasi</h2>
+      <div class="coords" id="coords"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Proyeksiya tekisliklari</h2>
+      <div class="legend">
+        <span><i style="background:var(--plane-h)"></i>H — gorizontal, nuqta A′ (yuqoridan)</span>
+        <span><i style="background:var(--plane-v)"></i>V — frontal, nuqta A″ (oldidan)</span>
+        <span><i style="background:var(--plane-w)"></i>W — profil, nuqta A‴ (yondan)</span>
+        <span>x oʻqi chapga yoʻnalgan, W oʻngda: darslikdagi joylashuv.</span>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const D=Math.PI/180, S9=9, V3=THREE.Vector3;
+
+const state={mode:'lamp',w:2.2,h:1.6,d:1.6,x:3.4,y:3.2,z:1.2,rot:20,
+  lx:7,ly:7.5,lz:8.5, az:42, el:46,
+  rain:false, rainN:55, wind:0.6,
+  u:0, rays:true, conn:true, labels:true, photons:true, cmp:false, pl:[true,true,true]};
+const reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(reduced){state.photons=false;}
+
+const INFO={
+  ortho:['Parallel proyeksiya: toʻgʻri burchakli','Proyeksiyalovchi nurlar tekislikka perpendikulyar (90°). Monj epyuri shu usulda quriladi. «Epyurga yoyish» tugmasi H va W ni V ga yoyadi.'],
+  lamp:['Markaziy proyeksiya','Hamma nur bitta S nuqtadan (fanar) chiqadi. Fanarni siljiting: proyeksiya kattalashadi va shakli oʻzgaradi.'],
+  sun:['Parallel proyeksiya: qiyshiq','Nurlar bir-biriga parallel, lekin tekisliklarga qiyshiq tushadi. Yoʻnalishni azimut va balandlik bilan oʻzgartiring.']
+};
+const METHOD={
+  lamp:['Markaziy proyeksiya','Proyeksiyalovchi nurlar S markazdan chiqib, jism uchlaridan oʻtadi va tekislikni kesadi. Parallel kesmalar proyeksiyada parallel boʻlmasligi mumkin.'],
+  sun:['Parallel qiyshiq proyeksiya','Proyeksiyalash markazi cheksiz uzoqda, nurlar s yoʻnalishiga parallel. s tekislikka perpendikulyar emas, shuning uchun proyeksiya siljigan koʻrinadi.'],
+  ortho:['Parallel toʻgʻri burchakli proyeksiya','Nurlar s yoʻnalishiga parallel va tekislikka perpendikulyar. Tekislikka parallel shakllar oʻlchamini saqlaydi. Monj usuli shunga asoslangan.']
+};
+const MODES={
+  ortho:{bg:0xa8d8ff,amb:.85,sun:.6,lamp:0,planeCol:null,planeOp:.09,fillCol:null,fillOp:.42,rayCol:null,rayOp:.9,rain:0x2f6fb5,rainOp:.55},
+  lamp:{bg:0x9fd0f7,amb:.6,sun:.25,lamp:1.5,planeCol:0xffffff,planeOp:.12,fillCol:0x0a1420,fillOp:.55,rayCol:0xd9480f,rayOp:.7,rain:0x2f6fb5,rainOp:.5},
+  sun:{bg:0x7fd0ff,amb:.65,sun:1.1,lamp:0,planeCol:0xffffff,planeOp:.12,fillCol:0x0a1420,fillOp:.5,rayCol:0xe67700,rayOp:.8,rain:0x2a65b0,rainOp:.6}
+};
+const PLC=[0x4f8fd6,0x46b394,0xb384d6];
+const PLC_LBL=['#8fbaf0','#7fd6bb','#d2aef0'];
+
+/* ---------- renderer ---------- */
+const canvas=$('c'), stage=$('stage');
+let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true});}
+catch(e){$('fail').style.display='grid';return;}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const world=new THREE.Group(); world.scale.x=-1; scene.add(world);
+scene.background=new THREE.Color(MODES.lamp.bg);
+const camera=new THREE.PerspectiveCamera(42,1,.1,300);
+
+const amb=new THREE.AmbientLight(0xffffff,.2); world.add(amb);
+const sunL=new THREE.DirectionalLight(0xfff1cf,0); world.add(sunL,sunL.target);
+const lampL=new THREE.PointLight(0xffe2a8,0,45,1); world.add(lampL);
+
+/* ---------- helpers ---------- */
+function makeLabel(text,color,size){
+  const cv=document.createElement('canvas'); cv.width=128; cv.height=64;
+  const g=cv.getContext('2d'); g.font='600 36px "IBM Plex Mono", monospace';
+  g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=7; g.strokeStyle='rgba(5,8,12,.9)'; g.strokeText(text,64,34);
+  g.fillStyle=color; g.fillText(text,64,34);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true}));
+  sp.scale.set(size||.9,(size||.9)/2,1); sp.renderOrder=20; return sp;
+}
+function glowTexture(){
+  const cv=document.createElement('canvas'); cv.width=cv.height=128;
+  const g=cv.getContext('2d'), gr=g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.25,'rgba(255,255,255,.45)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(cv);
+}
+const GLOW=glowTexture();
+function dynLines(maxVerts,color,opts){
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(maxVerts*3),3));
+  geo.setDrawRange(0,0);
+  const mat=new THREE.LineBasicMaterial(Object.assign({color,transparent:true},opts||{}));
+  const ln=new THREE.LineSegments(geo,mat); ln.frustumCulled=false; return ln;
+}
+function setSegs(ln,segs){
+  const a=ln.geometry.attributes.position.array; let n=0;
+  for(const [p,q] of segs){a[n++]=p.x;a[n++]=p.y;a[n++]=p.z;a[n++]=q.x;a[n++]=q.y;a[n++]=q.z;}
+  ln.geometry.attributes.position.needsUpdate=true; ln.geometry.setDrawRange(0,n/3);
+}
+
+/* ---------- planes ---------- */
+const planeDefs=[
+  {k:'H',comp:'y',uv:p=>[p.x,p.z],to3:(u,v,o)=>new V3(u,o||0,v)},
+  {k:'V',comp:'z',uv:p=>[p.x,p.y],to3:(u,v,o)=>new V3(u,v,o||0)},
+  {k:'W',comp:'x',uv:p=>[p.z,p.y],to3:(u,v,o)=>new V3(o||0,v,u)}
+];
+const NAMES=['A','B','C','D','E','F','G','K'];
+const PRIME=['′','″','‴'];
+const planes=planeDefs.map((d,i)=>{
+  const grp=new THREE.Group(); world.add(grp);
+  const geo=new THREE.PlaneGeometry(S9,S9);
+  if(d.k==='H'){geo.rotateX(-Math.PI/2);geo.translate(S9/2,0,S9/2);}
+  if(d.k==='V'){geo.translate(S9/2,S9/2,0);}
+  if(d.k==='W'){geo.rotateY(Math.PI/2);geo.translate(0,S9/2,S9/2);}
+  const mat=new THREE.MeshBasicMaterial({color:PLC[i],transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false});
+  const mesh=new THREE.Mesh(geo,mat); mesh.renderOrder=0; grp.add(mesh);
+
+  const gp=[];
+  for(let k=0;k<=S9;k++){
+    const a=d.to3(k,0),b=d.to3(k,S9),c=d.to3(0,k),e=d.to3(S9,k);
+    gp.push(a.x,a.y,a.z,b.x,b.y,b.z,c.x,c.y,c.z,e.x,e.y,e.z);
+  }
+  const gg=new THREE.BufferGeometry(); gg.setAttribute('position',new THREE.Float32BufferAttribute(gp,3));
+  const gmat=new THREE.LineBasicMaterial({color:PLC[i],transparent:true,opacity:.5});
+  const grid=new THREE.LineSegments(gg,gmat); 
+
+  const bp=[d.to3(0,0),d.to3(S9,0),d.to3(S9,S9),d.to3(0,S9)];
+  const bg=new THREE.BufferGeometry().setFromPoints(bp);
+  const border=new THREE.LineLoop(bg,new THREE.LineBasicMaterial({color:PLC[i],transparent:true,opacity:.9})); border.renderOrder=2; grp.add(border);
+
+  const fgeo=new THREE.BufferGeometry();
+  fgeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(12*3),3));
+  const idx=[]; for(let k=1;k<11;k++) idx.push(0,k,k+1); fgeo.setIndex(idx); fgeo.setDrawRange(0,0);
+  const fmat=new THREE.MeshBasicMaterial({color:PLC[i],transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+  const fill=new THREE.Mesh(fgeo,fmat); fill.renderOrder=3; fill.frustumCulled=false; grp.add(fill);
+
+  const outline=dynLines(48,PLC[i],{opacity:1}); outline.renderOrder=4; grp.add(outline);
+  const ghost=dynLines(24,0x10202f,{opacity:.85}); ghost.renderOrder=4; grp.add(ghost);
+
+  const dgeo=new THREE.BufferGeometry(); dgeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(24),3));
+  const dots=new THREE.Points(dgeo,new THREE.PointsMaterial({color:0xffffff,size:7,sizeAttenuation:false,transparent:true,depthTest:false}));
+  dots.renderOrder=6; dots.frustumCulled=false; grp.add(dots);
+
+  const labels=NAMES.map(n=>{const s=makeLabel(n+PRIME[i],PLC_LBL[i],.95); grp.add(s); return s;});
+  const tag=makeLabel(d.k,PLC_LBL[i],1.3); tag.position.copy(d.to3(S9-.6,S9-.5,.02)); grp.add(tag);
+
+  const rays=dynLines(16,0xffffff,{opacity:.7}); rays.renderOrder=5; world.add(rays);
+  return {d,grp,mesh,mat,gmat,fill,fmat,outline,ghost,dots,labels,rays,
+    col:new THREE.Color(PLC[i]),fcol:new THREE.Color(PLC[i]),rcol:new THREE.Color(PLC[i])};
+});
+
+/* axes */
+(function(){
+  const ax=[[new V3(0,0,0),new V3(S9+.4,0,0),'x'],[new V3(0,0,0),new V3(0,S9+.4,0),'z'],[new V3(0,0,0),new V3(0,0,S9+.4),'y']];
+  const pts=[]; ax.forEach(a=>{pts.push(a[0],a[1]);});
+  const g=new THREE.BufferGeometry().setFromPoints(pts);
+  world.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x14283c})));
+  ax.forEach(a=>{const s=makeLabel(a[2],'#ffffff',1); s.position.copy(a[1]).add(new V3(a[2]==='x'?.5:0,a[2]==='z'?.5:0,a[2]==='y'?.5:0)); world.add(s);});
+})();
+
+/* ---------- box ---------- */
+const box=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color:0xc9b0f7,roughness:.55,metalness:.05}));
+box.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),new THREE.LineBasicMaterial({color:0x3b2470})));
+world.add(box);
+const CORNERS=[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1],[-1,1,-1],[1,1,-1],[1,1,1],[-1,1,1]];
+const EDGES=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+const vSpheres=NAMES.map(()=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.07,12,10),new THREE.MeshBasicMaterial({color:0x3b2470})); world.add(m); return m;});
+const vLabels=NAMES.map(n=>{const s=makeLabel(n,'#fff2dd',1); world.add(s); return s;});
+
+function boxGeom(){
+  const th=state.rot*D, c=Math.cos(th), s=Math.sin(th);
+  const ex=(state.w/2)*Math.abs(c)+(state.d/2)*Math.abs(s);
+  const ez=(state.w/2)*Math.abs(s)+(state.d/2)*Math.abs(c);
+  return {th,c,s,cx:clamp(state.x,ex+.05,S9-ex-.05),cz:clamp(state.y,ez+.05,S9-ez-.05),cy:state.z+state.h/2};
+}
+
+/* ---------- connectors (Monge) ---------- */
+const connMat=new THREE.LineDashedMaterial({color:0xdfe7f0,dashSize:.2,gapSize:.13,transparent:true,opacity:.75});
+function dashed(n){
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*3),3));
+  const l=new THREE.LineSegments(g,connMat); l.frustumCulled=false; l.renderOrder=5; world.add(l); return l;
+}
+const connVH=dashed(32), connVW=dashed(32);
+
+/* ---------- flashlight ---------- */
+const lamp=new THREE.Group(); world.add(lamp);
+(function(){
+  const metal=new THREE.MeshStandardMaterial({color:0x56606b,metalness:.7,roughness:.35});
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.95,24),metal); body.geometry.rotateX(Math.PI/2); body.position.z=-.78; lamp.add(body);
+  const head=new THREE.Mesh(new THREE.CylinderGeometry(.44,.24,.36,28),new THREE.MeshStandardMaterial({color:0x2d3640,metalness:.6,roughness:.4})); head.geometry.rotateX(Math.PI/2); head.position.z=-.18; lamp.add(head);
+  const lens=new THREE.Mesh(new THREE.CircleGeometry(.4,28),new THREE.MeshBasicMaterial({color:0xfff0c2})); lens.position.z=.005; lamp.add(lens);
+  const btn=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.22),new THREE.MeshStandardMaterial({color:0xf2b84b})); btn.position.set(0,.25,-.7); lamp.add(btn);
+})();
+const lampGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:0xffc933,opacity:.55,transparent:true,depthWrite:false}));
+lampGlow.scale.set(3.4,3.4,1); world.add(lampGlow);
+const beamGeo=new THREE.ConeGeometry(1,1,48,1,true); beamGeo.translate(0,-.5,0);
+const beam=new THREE.Mesh(beamGeo,new THREE.MeshBasicMaterial({color:0xffd24d,transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false}));
+beam.frustumCulled=false; world.add(beam);
+const sLabel=makeLabel('S','#ffb000',1.3); world.add(sLabel);
+const dirArrow=new THREE.ArrowHelper(new V3(0,-1,0),new V3(),6,0xe67700,.8,.4); world.add(dirArrow);
+const dirLabel=makeLabel('s','#ffb000',1.3); world.add(dirLabel);
+const sunGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:0xffe14d,opacity:.7,transparent:true,depthWrite:false}));
+sunGlow.scale.set(16,16,1); world.add(sunGlow);
+
+const propsEl=$('m-props'); let propsKey='';
+function paintMethod(){
+  const deg=v=>Math.round(Math.asin(clamp(v,-1,1))/D)+'°';
+  let lines;
+  if(state.mode==='ortho') lines=['s ⟂ H, V, W','∠(s,H) = ∠(s,V) = ∠(s,W) = 90°'];
+  else if(state.mode==='sun') lines=['∠(s,H) = '+deg(SV.y),'∠(s,V) = '+deg(SV.z),'∠(s,W) = '+deg(SV.x),'burchaklar 90° emas: qiyshiq'];
+  else {
+    const k=(l,c)=>l-c>.3?'×'+(l/(l-c)).toFixed(2):'—';
+    lines=['S ('+state.lx.toFixed(1)+'; '+state.ly.toFixed(1)+'; '+state.lz.toFixed(1)+')','kattalashish H: '+k(LP.y,CEN.y),'kattalashish V: '+k(LP.z,CEN.z),'kattalashish W: '+k(LP.x,CEN.x)];
+  }
+  const key=state.mode+lines.join('|'); if(key===propsKey) return; propsKey=key;
+  propsEl.innerHTML=lines.map(l=>'<span>'+l+'</span>').join('');
+}
+/* ---------- photons (light flowing along rays) ---------- */
+const NP=170, pPos=new Float32Array(NP*3), pDir=new Float32Array(NP*3), pSpd=new Float32Array(NP), pAge=new Float32Array(NP);
+const photons=dynLines(NP*2,0xff8a00,{opacity:.75,depthWrite:false});
+photons.renderOrder=7; world.add(photons);
+
+/* ---------- rain ---------- */
+const NR=2400, rx=new Float32Array(NR), ry=new Float32Array(NR), rz=new Float32Array(NR), rv=new Float32Array(NR);
+const rainLn=dynLines(NR*2,0x2f6fb5,{opacity:.5,depthWrite:false}); rainLn.renderOrder=6; world.add(rainLn);
+function resetDrop(i,init){rx[i]=-.5+Math.random()*10.5; rz[i]=-.5+Math.random()*10.5; ry[i]=init?Math.random()*13:12+Math.random()*2; rv[i]=14+Math.random()*5;}
+for(let i=0;i<NR;i++) resetDrop(i,true);
+const NS=60, splashes=[]; let splashIx=0;
+for(let i=0;i<NS;i++){
+  const m=new THREE.Mesh(new THREE.RingGeometry(.8,1,24),new THREE.MeshBasicMaterial({color:0x1f5fa8,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
+  m.rotation.x=-Math.PI/2; m.visible=false; m.renderOrder=6; world.add(m); splashes.push({m,age:9,life:.6});
+}
+function splash(x,y,z){const s=splashes[splashIx++%NS]; s.age=0; s.m.position.set(x,y+.02,z); s.m.visible=true;}
+
+/* ---------- geometry maths ---------- */
+function hull(pts){
+  const p=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]); if(p.length<3) return p;
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[]; for(const q of p){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop(); lo.push(q);}
+  const up=[]; for(let i=p.length-1;i>=0;i--){const q=p[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop(); up.push(q);}
+  up.pop(); lo.pop(); return lo.concat(up);
+}
+function clipRect(poly,S){
+  let out=poly;
+  for(const [a,d,b] of [[0,1,0],[0,-1,S],[1,1,0],[1,-1,S]]){
+    const inp=out; out=[]; if(!inp.length) break;
+    for(let i=0;i<inp.length;i++){
+      const P=inp[i], Q=inp[(i+1)%inp.length];
+      const pi=d*(P[a]-b)>=0, qi=d*(Q[a]-b)>=0;
+      if(pi) out.push(P);
+      if(pi!==qi){const t=(b-P[a])/(Q[a]-P[a]); out.push([P[0]+(Q[0]-P[0])*t,P[1]+(Q[1]-P[1])*t]);}
+    }
+  }
+  return out;
+}
+function sunVec(){
+  const az=clamp(state.az,8,82)*D, el=clamp(state.el,12,80)*D;
+  return new V3(Math.cos(el)*Math.sin(az),Math.sin(el),Math.cos(el)*Math.cos(az));
+}
+
+/* ---------- camera ---------- */
+const cam={az:-42,el:26,r:21,tx:-3.6,ty:3,tz:3.6}, goal=Object.assign({},cam);
+function cornerView(){Object.assign(goal,{az:-42,el:26,r:21,tx:-3.6,ty:3,tz:3.6});}
+function epureView(){
+  const t=Math.tan(21*D), asp=camera.aspect||1.4;
+  const r=Math.max(9.6/t, 9.6/(t*asp))*1.04;
+  Object.assign(goal,{az:0,el:0,r,tx:0,ty:0,tz:0});
+}
+const ptrs=new Map(); let pinch=0;
+const pdist=()=>{const a=[...ptrs.values()]; return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);};
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(ptrs.size===2) pinch=pdist();});
+canvas.addEventListener('pointermove',e=>{
+  const p=ptrs.get(e.pointerId); if(!p) return;
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
+  if(ptrs.size===1){goal.az-=dx*.35; goal.el=clamp(goal.el+dy*.3,-8,88);}
+  else if(ptrs.size===2){const d=pdist(); if(pinch) goal.r=clamp(goal.r*pinch/d,6,50); pinch=d;}
+});
+const endP=e=>{ptrs.delete(e.pointerId); pinch=0;};
+canvas.addEventListener('pointerup',endP); canvas.addEventListener('pointercancel',endP);
+canvas.addEventListener('wheel',e=>{e.preventDefault(); goal.r=clamp(goal.r*Math.exp(e.deltaY*.0012),6,50);},{passive:false});
+
+function resize(){
+  const w=Math.max(1,stage.clientWidth), h=Math.max(1,stage.clientHeight);
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+/* ---------- UI ---------- */
+const sliders={};
+function addSlider(box,key,label,min,max,step,fmt,onchange){
+  const id='s-'+key, row=document.createElement('div'); row.className='row';
+  row.innerHTML='<label for="'+id+'">'+label+'</label><output id="o-'+key+'"></output><input type="range" id="'+id+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+state[key]+'">';
+  $(box).appendChild(row);
+  const inp=row.querySelector('input'), out=row.querySelector('output');
+  const show=()=>{out.textContent=fmt(+inp.value);}; show();
+  inp.addEventListener('input',()=>{state[key]=+inp.value; show(); if(onchange) onchange();});
+  sliders[key]={inp,show};
+}
+const f1=v=>v.toFixed(1), fdeg=v=>Math.round(v)+'°', fpc=v=>Math.round(v)+'%';
+addSlider('g-lamp','lx','Fanar x (chapdan)',1,9,.1,f1);
+addSlider('g-lamp','ly','Fanar y (chuqurlik)',1,9,.1,f1);
+addSlider('g-lamp','lz','Fanar z (balandlik)',3,10,.1,f1);
+addSlider('g-sun','az','Quyosh azimuti',8,82,1,fdeg);
+addSlider('g-sun','el','Quyosh balandligi',12,80,1,fdeg);
+addSlider('g-body','w','Uzunlik (x boʻyicha)',.8,4,.1,f1);
+addSlider('g-body','d','Eni (y boʻyicha)',.8,4,.1,f1);
+addSlider('g-body','h','Balandlik (z boʻyicha)',.8,3,.1,f1);
+addSlider('g-body','x','Joyi: x',1,8,.1,f1);
+addSlider('g-body','y','Joyi: y (chuqurlik)',1,8,.1,f1);
+addSlider('g-body','z','Joyi: z (H dan balandlik)',0,4,.1,f1);
+addSlider('g-body','rot','Vertikal oʻq atrofida burilish',0,90,1,fdeg);
+addSlider('g-rain','rainN','Zichlik',5,100,1,fpc);
+addSlider('g-rain','wind','Shamol',-3,3,.1,f1);
+addSlider('g-view','u','Tekisliklarni yoyish',0,1,.01,v=>Math.round(v*100)+'%');
+sliders.u.inp.addEventListener('input',()=>{updUnfoldBtn();});
+
+const tgBox=$('g-toggles');
+[['rays','Nurlar'],['conn','Bogʻlovchi chiziqlar'],['labels','Belgilar'],['photons','Nur oqimi'],['cmp','Tik proyeksiya bilan solishtirish']].forEach(([k,l])=>{
+  const lab=document.createElement('label'); lab.className='tg';
+  lab.innerHTML='<input type="checkbox" id="t-'+k+'"'+(state[k]?' checked':'')+'> '+l;
+  tgBox.appendChild(lab);
+  lab.querySelector('input').addEventListener('change',e=>{state[k]=e.target.checked;});
+});
+['H','V','W'].forEach((n,i)=>{
+  const lab=document.createElement('label'); lab.className='tg '+n.toLowerCase();
+  lab.innerHTML='<input type="checkbox" checked> <span>'+n+' tekislik</span>';
+  tgBox.appendChild(lab);
+  lab.querySelector('input').addEventListener('change',e=>{state.pl[i]=e.target.checked;});
+});
+$('t-rain').addEventListener('change',e=>{state.rain=e.target.checked;});
+
+function setU(v){state.u=v; sliders.u.inp.value=v; sliders.u.show(); updUnfoldBtn();}
+function updUnfoldBtn(){$('b-unfold').textContent=state.u>.5?'Fazoviy koʻrinishga qaytish':'Epyurga yoyish';}
+$('b-unfold').addEventListener('click',()=>{
+  if(state.u>.5){setU(0); cornerView();} else {setU(1); epureView();}
+});
+$('b-corner').addEventListener('click',()=>{cornerView();});
+
+const hudT=$('hud-title'), hudD=$('hud-desc'), noteEl=$('note');
+function setMode(m,initial){
+  state.mode=m;
+  document.querySelectorAll('#modes button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===m)));
+  hudT.textContent=INFO[m][0]; hudD.textContent=INFO[m][1];
+  $('m-name').textContent=METHOD[m][0]; $('m-rule').textContent=METHOD[m][1];
+  $('sec-light').hidden=(m==='ortho');
+  $('g-lamp').hidden=(m!=='lamp'); $('g-sun').hidden=(m!=='sun');
+  $('light-title').textContent=m==='lamp'?'Markaz S (fanar)':'Nur yoʻnalishi s (quyosh)';
+  $('t-conn').closest('label').style.opacity=(m==='ortho')?1:.45;
+  if(!initial){state.rain=(m==='sun'); $('t-rain').checked=state.rain;}
+  for(let i=0;i<NP;i++) spawnPhoton(i,true);
+}
+document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+
+/* coordinate table */
+const coordsEl=$('coords'); let coordsKey='';
+function paintCoords(verts){
+  const rows=verts.map((p,i)=>[NAMES[i],p.x.toFixed(1),p.z.toFixed(1),p.y.toFixed(1)]); // Monge: x, y=depth, z=height
+  const key=rows.join('|'); if(key===coordsKey) return; coordsKey=key;
+  let h='<span class="hd"></span><span class="hd">x</span><span class="hd">y</span><span class="hd">z</span>';
+  rows.forEach(r=>{h+='<b>'+r[0]+'</b><span>'+r[1]+'</span><span>'+r[3]+'</span><span>'+r[2]+'</span>';});
+  coordsEl.innerHTML=h;
+}
+
+/* ---------- photons ---------- */
+let G=null, SV=new V3(0,1,0), LP=new V3(), CEN=new V3();
+const tmpA=new V3(), tmpB=new V3();
+function spawnPhoton(i,stagger){
+  let dir=tmpA, pos=tmpB;
+  if(state.mode==='ortho'){
+    const k=i%3, r=()=>Math.random()*S9, t=stagger?Math.random()*12:12;
+    if(k===0){dir.set(0,-1,0); pos.set(r(),t,r());}
+    else if(k===1){dir.set(0,0,-1); pos.set(r(),r(),t);}
+    else {dir.set(-1,0,0); pos.set(t,r(),r());}
+  } else if(state.mode==='sun'){
+    dir.copy(SV).multiplyScalar(-1);
+    const u1=new V3().crossVectors(SV,new V3(0,1,0)).normalize(), u2=new V3().crossVectors(SV,u1).normalize();
+    pos.copy(CEN).addScaledVector(SV,24).addScaledVector(u1,(Math.random()-.5)*20).addScaledVector(u2,(Math.random()-.5)*20);
+    pos.addScaledVector(dir,stagger?Math.random()*34:0);
+  } else {
+    const fwd=CEN.clone().sub(LP); const dist=fwd.length()||1; fwd.divideScalar(dist);
+    const R=.5*Math.hypot(state.w,state.h,state.d)*1.2, half=Math.asin(clamp(R/dist,.05,.9));
+    const u1=new V3().crossVectors(fwd,new V3(0,1,0)).normalize(), u2=new V3().crossVectors(fwd,u1).normalize();
+    const a=Math.random()*Math.PI*2, rr=Math.sqrt(Math.random())*Math.tan(half);
+    dir.copy(fwd).addScaledVector(u1,Math.cos(a)*rr).addScaledVector(u2,Math.sin(a)*rr).normalize();
+    pos.copy(LP).addScaledVector(dir,.3+(stagger?Math.random()*22:0));
+  }
+  pPos[i*3]=pos.x; pPos[i*3+1]=pos.y; pPos[i*3+2]=pos.z;
+  pDir[i*3]=dir.x; pDir[i*3+1]=dir.y; pDir[i*3+2]=dir.z;
+  pSpd[i]=9+Math.random()*5; pAge[i]=0;
+}
+function inBox(x,y,z){
+  const dx=x-G.cx, dz=z-G.cz, lx=dx*G.c-dz*G.s, lz=dx*G.s+dz*G.c;
+  return Math.abs(lx)<state.w/2 && Math.abs(lz)<state.d/2 && y>state.z && y<state.z+state.h;
+}
+
+/* ---------- main update ---------- */
+const cur={amb:.16,sun:0,lamp:0,planeOp:.3,fillOp:.5,rayOp:.6,rainOp:.3};
+const rainCol=new THREE.Color(0x2f6fb5), bgTarget=new THREE.Color();
+const white=new THREE.Color(0xffffff), black=new THREE.Color(0x000000);
+let first=true;
+
+function update(dt){
+  const m=MODES[state.mode];
+  const kc=1-Math.exp(-dt*9), ke=1-Math.exp(-dt*4);
+  for(const k of ['az','el','r','tx','ty','tz']) cam[k]+=(goal[k]-cam[k])*kc;
+  const ce=Math.cos(cam.el*D), se=Math.sin(cam.el*D);
+  camera.position.set(cam.tx+cam.r*ce*Math.sin(cam.az*D),cam.ty+cam.r*se,cam.tz+cam.r*ce*Math.cos(cam.az*D));
+  camera.lookAt(cam.tx,cam.ty,cam.tz);
+
+  // unfolding
+  uCur+=(state.u-uCur)*(1-Math.exp(-dt*4));
+  if(Math.abs(state.u-uCur)<.0005) uCur=state.u;
+  planes[0].grp.rotation.x=uCur*Math.PI/2; planes[0].grp.updateMatrix();
+  planes[2].grp.rotation.y=-uCur*Math.PI/2; planes[2].grp.updateMatrix();
+  const fade=Math.max(0,1-uCur*1.5);
+
+  // environment lerp
+  bgTarget.setHex(m.bg); scene.background.lerp(bgTarget,ke);
+  cur.amb+=(m.amb-cur.amb)*ke; cur.sun+=(m.sun-cur.sun)*ke; cur.lamp+=(m.lamp-cur.lamp)*ke;
+  cur.planeOp+=(m.planeOp-cur.planeOp)*ke; cur.fillOp+=(m.fillOp-cur.fillOp)*ke; cur.rayOp+=(m.rayOp-cur.rayOp)*ke; cur.rainOp+=(m.rainOp-cur.rainOp)*ke;
+  amb.intensity=cur.amb; sunL.intensity=cur.sun; lampL.intensity=cur.lamp;
+  rainCol.lerp(new THREE.Color(m.rain),ke);
+
+  // box + vertices
+  G=boxGeom();
+  box.position.set(G.cx,G.cy,G.cz); box.rotation.y=G.th; box.scale.set(state.w,state.h,state.d);
+  const verts=CORNERS.map(([sx,sy,sz])=>{
+    const lx=sx*state.w/2, lz=sz*state.d/2;
+    return new V3(G.cx+lx*G.c+lz*G.s, G.cy+sy*state.h/2, G.cz-lx*G.s+lz*G.c);
+  });
+  verts.forEach((p,i)=>{vSpheres[i].position.copy(p); vLabels[i].position.set(p.x,p.y+.3,p.z); vLabels[i].visible=state.labels;});
+  CEN.set(G.cx,G.cy,G.cz); SV=sunVec(); LP.set(state.lx,state.lz,state.ly);
+  paintCoords(verts);
+
+  // light sources
+  const isLamp=state.mode==='lamp', isSun=state.mode==='sun', isOrtho=state.mode==='ortho';
+  lamp.visible=isLamp; lampGlow.visible=isLamp; beam.visible=isLamp; sunGlow.visible=isSun;
+  lampL.position.copy(LP);
+  if(isSun){sunL.position.copy(CEN).addScaledVector(SV,30);} else sunL.position.set(CEN.x+4,CEN.y+10,CEN.z+7);
+  sunL.target.position.copy(CEN); sunL.target.updateMatrixWorld();
+  if(isLamp){
+    lamp.position.copy(LP); lamp.lookAt(CEN); lampGlow.position.copy(LP);
+    const fwd=CEN.clone().sub(LP), dist=fwd.length(); fwd.normalize();
+    const R=.5*Math.hypot(state.w,state.h,state.d)*1.25, half=Math.asin(clamp(R/dist,.05,.9));
+    const Hh=dist+2.5; beam.position.copy(LP);
+    beam.quaternion.setFromUnitVectors(new V3(0,-1,0),fwd); beam.scale.set(Hh*Math.tan(half),Hh,Hh*Math.tan(half));
+  }
+  if(isSun) sunGlow.position.copy(CEN).addScaledVector(SV,38);
+  sLabel.visible=isLamp; sLabel.position.set(LP.x,LP.y+1,LP.z);
+  dirArrow.visible=dirLabel.visible=isSun;
+  if(isSun){
+    dirArrow.position.copy(CEN).addScaledVector(SV,11); dirArrow.setDirection(SV.clone().negate()); dirArrow.setLength(6,.8,.4);
+    dirLabel.position.copy(CEN).addScaledVector(SV,11.8);
+  }
+  paintMethod();
+
+  // projections
+  const project=(P,pl)=>{
+    const k=pl.comp;
+    if(isOrtho){const o=P.clone(); o[k]=0; return o;}
+    if(isSun){return P.clone().addScaledVector(SV,-P[k]/SV[k]);}
+    const den=LP[k]-P[k]; if(den<.3) return null;
+    const t=LP[k]/den; return LP.clone().add(P.clone().sub(LP).multiplyScalar(t));
+  };
+  const notes=[];
+  const showRays=state.rays;
+  const VP=[], WP=[];
+  planes.forEach((pln,pi)=>{
+    const d=pln.d;
+    if(!state.pl[pi]){pln.grp.visible=false; pln.rays.visible=false; return;}
+    pln.grp.visible=true;
+    // plane + color lerps
+    const baseCol=m.planeCol===null?new THREE.Color(PLC[pi]):new THREE.Color(m.planeCol);
+    pln.col.lerp(baseCol,ke); pln.mat.color.copy(pln.col); pln.mat.opacity=cur.planeOp;
+    const fc=m.fillCol===null?new THREE.Color(PLC[pi]):new THREE.Color(m.fillCol);
+    pln.fcol.lerp(fc,ke); pln.fmat.color.copy(pln.fcol); pln.fmat.opacity=cur.fillOp;
+    const rc=m.rayCol===null?new THREE.Color(PLC[pi]).lerp(black,.2):new THREE.Color(m.rayCol);
+    pln.rcol.lerp(rc,ke); pln.rays.material.color.copy(pln.rcol); pln.rays.material.opacity=cur.rayOp*fade;
+    pln.rays.visible=showRays&&fade>.01;
+    pln.outline.material.color.copy(isOrtho?new THREE.Color(PLC[pi]).lerp(black,.3):new THREE.Color(0x101418));
+    pln.outline.material.opacity=isOrtho?1:.0;
+
+    const pts=verts.map(P=>project(P,d));
+    const ok=pts.every(p=>p);
+    if(!ok){
+      notes.push('Fanar '+d.k+' tekislikka soya tushirmaydi: nur uchlardan pastga yoki tekislikka parallel boʻlib ketdi');
+      pln.fill.geometry.setDrawRange(0,0); pln.outline.geometry.setDrawRange(0,0);
+      pln.dots.visible=false; pln.labels.forEach(l=>l.visible=false); pln.rays.visible=false; pln.ghost.geometry.setDrawRange(0,0);
+      VP[pi]=null; return;
+    }
+    const uv=pts.map(p=>d.uv(p));
+    // fill
+    const poly=clipRect(hull(uv),S9);
+    const fp=pln.fill.geometry.attributes.position.array;
+    poly.forEach((q,j)=>{const w=d.to3(q[0],q[1],.012); fp[j*3]=w.x; fp[j*3+1]=w.y; fp[j*3+2]=w.z;});
+    pln.fill.geometry.attributes.position.needsUpdate=true;
+    pln.fill.geometry.setDrawRange(0,poly.length>=3?3*(poly.length-2):0);
+    // outline
+    if(isOrtho){
+      setSegs(pln.outline,EDGES.map(([a,b])=>[d.to3(uv[a][0],uv[a][1],.016),d.to3(uv[b][0],uv[b][1],.016)]));
+    } else pln.outline.geometry.setDrawRange(0,0);
+    if(!isOrtho&&state.cmp){
+      const g2=verts.map(P=>{const o=P.clone(); o[d.comp]=0; return d.uv(o);});
+      setSegs(pln.ghost,EDGES.map(([a,b])=>[d.to3(g2[a][0],g2[a][1],.02),d.to3(g2[b][0],g2[b][1],.02)]));
+    } else pln.ghost.geometry.setDrawRange(0,0);
+    // dots, labels, rays
+    const inside=uv.map(q=>q[0]>=-.05&&q[0]<=S9+.05&&q[1]>=-.05&&q[1]<=S9+.05);
+    const da=pln.dots.geometry.attributes.position.array;
+    const rsegs=[];
+    pts.forEach((p,i)=>{
+      const w=d.to3(uv[i][0],uv[i][1],.02);
+      da[i*3]=inside[i]?w.x:0; da[i*3+1]=inside[i]?w.y:0; da[i*3+2]=inside[i]?w.z:0;
+      const lb=pln.labels[i];
+      lb.visible=state.labels&&inside[i];
+      lb.position.set(w.x,w.y,w.z); lb.position.y+=d.k==='H'?.02:.28; if(d.k==='H') lb.position.z+=.3;
+      if(inside[i]){
+        const from=isOrtho?verts[i]:isSun?verts[i].clone().addScaledVector(SV,8):LP;
+        rsegs.push([from,p]);
+      }
+    });
+    pln.dots.geometry.attributes.position.needsUpdate=true;
+    pln.dots.visible=true;
+    pln.dots.material.color.setHex(0x10202f);
+    setSegs(pln.rays,rsegs);
+    VP[pi]=pts.map((p,i)=>({uv:uv[i],p}));
+  });
+  noteEl.textContent=notes.length?notes.join(' · '):'';
+
+  // Monge connecting lines (V↔H and V↔W): bend along the axes, straighten when unfolded
+  const showConn=isOrtho&&state.conn&&fade>.01;
+  connVH.visible=!!showConn&&state.pl[0]&&state.pl[1]; connVW.visible=!!showConn&&state.pl[1]&&state.pl[2];
+  if(showConn){
+    connMat.opacity=.75*fade;
+    const sH=[],sW=[];
+    for(let i=0;i<8;i++){
+      const v=verts[i];
+      const Vp=new V3(v.x,v.y,0), Hp=new V3(v.x,0,v.z).applyMatrix4(planes[0].grp.matrix);
+      const Wp=new V3(0,v.y,v.z).applyMatrix4(planes[2].grp.matrix);
+      const ax=new V3(v.x,0,0), ay=new V3(0,v.y,0);
+      sH.push([Vp,ax],[ax,Hp]); sW.push([Vp,ay],[ay,Wp]);
+    }
+    setSegs(connVH,sH); setSegs(connVW,sW);
+    connVH.computeLineDistances(); connVW.computeLineDistances();
+  }
+
+  // photons
+  const ph=state.photons&&!reduced;
+  photons.visible=ph;
+  if(ph){
+    const segs=photons.geometry.attributes.position.array;
+    for(let i=0;i<NP;i++){
+      const j=i*3; const sp=pSpd[i]*dt;
+      pPos[j]+=pDir[j]*sp; pPos[j+1]+=pDir[j+1]*sp; pPos[j+2]+=pDir[j+2]*sp; pAge[i]+=sp;
+      const x=pPos[j],y=pPos[j+1],z=pPos[j+2];
+      if(x<-.2||y<-.2||z<-.2||pAge[i]>46||inBox(x,y,z)) spawnPhoton(i,false);
+      const k=i*6;
+      segs[k]=pPos[j]-pDir[j]*.55; segs[k+1]=pPos[j+1]-pDir[j+1]*.55; segs[k+2]=pPos[j+2]-pDir[j+2]*.55;
+      segs[k+3]=pPos[j]; segs[k+4]=pPos[j+1]; segs[k+5]=pPos[j+2];
+    }
+    photons.geometry.attributes.position.needsUpdate=true; photons.geometry.setDrawRange(0,NP*2);
+  }
+
+  // rain
+  rainLn.visible=state.rain;
+  if(state.rain){
+    const act=Math.round(NR*state.rainN/100), wx=state.wind*2.5, top=state.z+state.h;
+    const arr=rainLn.geometry.attributes.position.array;
+    for(let i=0;i<act;i++){
+      let nx=rx[i]+wx*dt, ny=ry[i]-rv[i]*dt, nz=rz[i];
+      let landed=false;
+      if(ry[i]>top&&ny<=top){
+        const dx=nx-G.cx, dz=nz-G.cz, lx=dx*G.c-dz*G.s, lz=dx*G.s+dz*G.c;
+        if(Math.abs(lx)<state.w/2&&Math.abs(lz)<state.d/2){landed=true; if(Math.random()<.3) splash(nx,top,nz);}
+      }
+      if(!landed&&ny<=0){landed=true; if(Math.random()<.22&&nx>=0&&nz>=0&&nx<=S9&&nz<=S9) splash(nx,0,nz);}
+      if(landed){resetDrop(i,false); nx=rx[i]; ny=ry[i]; nz=rz[i];}
+      rx[i]=nx; ry[i]=ny; rz[i]=nz;
+      const k=i*6, tl=.045;
+      arr[k]=nx; arr[k+1]=ny; arr[k+2]=nz; arr[k+3]=nx-wx*tl; arr[k+4]=ny+rv[i]*tl; arr[k+5]=nz;
+    }
+    rainLn.geometry.attributes.position.needsUpdate=true; rainLn.geometry.setDrawRange(0,act*2);
+    rainLn.material.color.copy(rainCol); rainLn.material.opacity=cur.rainOp;
+  }
+  for(const s of splashes){
+    if(!s.m.visible) continue;
+    s.age+=dt; const t=s.age/s.life;
+    if(t>=1){s.m.visible=false; continue;}
+    const sc=.06+t*.45; s.m.scale.set(sc,sc,sc); s.m.material.opacity=(1-t)*.7;
+  }
+}
+let uCur=0;
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  update(dt); renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+function start(){
+  setMode('lamp',true); updUnfoldBtn();
+  for(let i=0;i<NP;i++) spawnPhoton(i,true);
+  requestAnimationFrame(t=>{last=t; frame(t);});
+}
+const fontsReady=(document.fonts&&document.fonts.ready)||Promise.resolve();
+Promise.race([fontsReady,new Promise(r=>setTimeout(r,1500))]).then(start);
+})();
+</script>
+
+</body></html>
