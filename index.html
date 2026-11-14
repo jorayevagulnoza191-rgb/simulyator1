@@ -15,7 +15,9 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--font)}
 a{color:var(--accent)}
 header.top{background:linear-gradient(120deg,#0f2f66,#1f5fbf 60%,#2b7bd8);color:#fff;padding:22px 24px 18px}
-header.top .wrap{max-width:1240px;margin:auto}
+header.top .wrap{max-width:1240px;margin:auto;position:relative;padding-right:calc(15mm + 14px)}
+#topicQR{position:absolute;top:0;right:0;width:15mm;height:15mm;background:#fff;border-radius:4px;padding:1mm;box-sizing:border-box;display:block;line-height:0}
+#topicQR svg{width:100%;height:100%;display:block}
 .kicker{font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
 header.top h1{margin:4px 0 6px;font-size:clamp(24px,3.4vw,36px);line-height:1.15}
 header.top p{margin:0;opacity:.9;max-width:900px}
@@ -70,6 +72,19 @@ th{background:var(--soft)}
 .animlink:hover{border-color:var(--accent)}
 .animlink .play{width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:18px;flex:none}
 .animlink small{display:block;color:var(--muted)}
+body.solo-mode>header,body.solo-mode>.layout{display:none!important}
+.solo{max-width:1200px;margin:0 auto;padding:10px}
+.solo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 4px 12px}
+.solo-head b{font-size:18px}
+.solo-head a.btn{text-decoration:none;font-size:14px}
+a.btn{display:inline-block;text-decoration:none;font:600 15px var(--font);border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:9px 16px}
+a.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:600px){
+  .cw{--cs:min(26px,calc((100vw - 60px) / var(--cols) - 2px))}
+  .cw .c input{font-size:calc(var(--cs) * .58)}
+  .cw .c .num{font-size:8px}
+  .clues{columns:1}
+}
 /* stepper */
 .stepper{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
 .stepper .bar{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--soft);align-items:center}
@@ -143,7 +158,7 @@ details.cq[open]{background:#f8fbff}
 .clues{columns:2 300px;column-gap:28px}.clues h4{break-after:avoid}
 .cw{display:grid;gap:2px;width:max-content;max-width:100%;overflow-x:auto}
 table{display:block;overflow-x:auto}
-.cw .c{width:32px;height:32px;position:relative}
+.cw .c{width:var(--cs,32px);height:var(--cs,32px);position:relative}
 .cw .c.on{background:#fff;outline:1.5px solid #34495e}
 .cw .c input{width:100%;height:100%;border:0;text-align:center;font:700 17px var(--font);text-transform:uppercase;background:transparent;padding:0}
 .cw .c input:focus{background:#fff3c4;outline:none}
@@ -161,8 +176,6 @@ table{display:block;overflow-x:auto}
   .card{padding:12px}
   .sec-head h2{font-size:20px}
   .qrbox .qr{width:140px;height:140px}
-  .cw .c{width:26px;height:26px}.cw .c input{font-size:14px}
-  .cw{grid-template-columns:repeat(var(--cols),26px)!important}
   .gal img{height:180px}
   table{font-size:13px}th,td{padding:6px}
   .pager{flex-direction:column}
@@ -202,6 +215,7 @@ table{display:block;overflow-x:auto}
 <body>
 <header class="top">
   <div class="wrap">
+    <a id="topicQR" target="_blank" rel="noopener" title="Butun mavzuni ochuvchi QR kod"></a>
     <div class="kicker">Chizmachilik · 8-sinf · I. Rahmonov darsligi asosida</div>
     <h1 id="title">Tutashmalar: interaktiv o'quv qo'llanma</h1>
     <p id="subtitle"></p>
@@ -1032,7 +1046,7 @@ var SECS=[
  {id:"video",t:"Video dars",s:"Tutashmaning maqsadi: u qayerda va nima uchun ishlatiladi"},
  {id:"yasash",t:"Yasash usullari",s:"Darslikdagi chizmalar bo'yicha yasash qadamlari"},
  {id:"gloss",t:"Glossariy",s:"Atamalar va ularning izohi"},
- {id:"anim",t:"Bosqichma-bosqich animatsiya",s:"Yasash qadamlari, PowerPoint va QR kod"},
+ {id:"anim",t:"Bosqichma-bosqich animatsiya",s:"Yasash qadamlari va QR kod"},
  {id:"model",t:"3D model va AR (QR kod)",s:"Aylantiriladigan model va telefonda AR uchun QR"},
  {id:"chizish",t:"Chizish uchun (amaliy ish)",s:"Ishchi chizma, chizish tartibi va mashqlar"},
  {id:"savol",t:"Nazorat savollari",s:"Savollar va namunaviy javoblar"},
@@ -1047,7 +1061,7 @@ var state={topic:store.get("topic","t10"),sec:store.get("secId","nazariya"),edit
 (function(){var m=location.hash.match(/^#(t10|t11)\/(\w+)(?:\/(\w+))?/);if(m){state.topic=m[1];state.sec=m[2];state.tab=m[3]||""}})();
 if(!secById(state.sec))state.sec="nazariya";
 window.addEventListener("hashchange",function(){var m=location.hash.match(/^#(t10|t11)\/(\w+)(?:\/(\w+))?/);if(m&&secById(m[2])&&(m[1]!==state.topic||m[2]!==state.sec||(m[3]||"")!==state.tab)){state.topic=m[1];state.sec=m[2];state.tab=m[3]||"";render()}});
-var EDITS=Object.assign({},(typeof OVR==="object"&&OVR)||{},store.get("edits",{}));
+var EDITS=Object.assign({},(typeof OVR==="object"&&OVR)||{},store.get("edits_v17",{}));
 
 function secBody(T,id){
   var tk=state.topic,h="";
@@ -1061,8 +1075,9 @@ function secBody(T,id){
   case "anim":h+=animHTML(T,tk);break;
   case "video":h+=T.maqsad()+videoHTML(T,tk);break;
   case "model":h+='<p>'+T.model+'</p><div data-viewer="'+T.part+'" contenteditable="false"></div>'+
-     '<h3>AR (to\'ldirilgan reallik) uchun QR kod</h3><p>Detalning 3D modelini <b>Sketchfab</b>, <b>Tinkercad</b> yoki boshqa xizmatga joylab, havolasini kiriting. O\'quvchi telefon kamerasi bilan QR kodni skanerlaydi, model ochiladi va "AR" tugmasi bosilsa, detal stol ustida turgandek ko\'rinadi.</p>'+
-     qrBlock(tk+":ar","3D model / AR havolasi","Havolani kiriting va «QR yaratish» tugmasini bosing. Havola shu kompyuterda saqlanib qoladi.","");break;
+     '<h3>3D model va AR (to\'ldirilgan reallik) uchun QR kod</h3><p>O\'quvchi QR kodni telefon kamerasi bilan skanerlaydi. Ochilgan sahifada detalni barmoq bilan aylantirish mumkin. <b>«📱 AR\'da ko\'rish»</b> tugmasi bosilsa, kamera ochiladi va detal haqiqiy o\'lchamda stol ustida turgandek ko\'rinadi.</p>'+
+     selfQR("ar-"+T.part,"3D model va AR uchun QR kod")+
+     '<div class="note">AR Android telefonlarda ishlaydi (Google "ARCore" xizmati kerak). iPhone\'da va ARCore\'siz telefonlarda shu sahifadagi 3D model ochiladi.</div>';break;
   case "chizish":h+=T.draw()+(T.drawEmbed?embedHTML(T.drawEmbed,"chizish"):"")+
      '<p class="no-print"><button class="btn" onclick="window.print()">🖨 Chizmani chop etish</button></p>';break;
   case "savol":h+=symHead("savol","Mavzuni takrorlang")+T.cq.map(function(q,j){return '<details class="cq"><summary>'+(j+1)+'. '+q[0]+'</summary><p>'+q[1]+'</p></details>'}).join("")+'<p class="no-print"><button class="btn" data-openall>Barcha javoblarni ochish</button></p>';break;
@@ -1084,9 +1099,9 @@ var VURL={};
 function vidURL(k){if(!VURL[k]){var b=atob(VIDS[k]),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);VURL[k]=URL.createObjectURL(new Blob([u],{type:"video/mp4"}))}return VURL[k]}
 function ownVideoHTML(o){
   return '<div class="card" style="padding:14px;background:#fbfcfe"><h3 style="margin-top:0">'+o.t+'</h3><p style="margin-top:0">'+o.d+'</p>'+
-  '<div data-ownvideo="'+o.key+'" contenteditable="false" style="aspect-ratio:16/9;background:#0f1722;border-radius:12px;overflow:hidden"></div>'+
+  '<div data-ownvideo="'+o.key+'" contenteditable="false" style="position:relative;aspect-ratio:16/9;background:#0f1722;border-radius:12px;overflow:hidden"></div>'+
   '<p class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0"><button class="btn" data-vdl="'+o.key+'" data-vname="'+o.file+'">⬇ Videoni yuklab olish (MP4)</button></p>'+
-  selfQR("video","Videoni telefonda ko'rish uchun QR kod")+
+  selfQR("v-"+o.key,"Videoni telefonda ko'rish uchun QR kod")+
   '<h4>Videoda nimalar bor</h4><ol>'+o.plan.map(function(x){return '<li>'+x+'</li>'}).join("")+'</ol>'+
   '<div class="note"><b>Darsda foydalanish:</b> videoni har bir detalda to\'xtatib, o\'quvchilardan so\'rang: "Bu qaysi yasash? O markaz qanday topiladi?" Videoda ovoz yo\'q, izohni o\'qituvchi beradi.</div></div>';
 }
@@ -1095,7 +1110,7 @@ function videoHTML(T,tk){
   var soft=T.soft==="kalibr"?"kalibr":"detal";
   return (T.ownVideo?ownVideoHTML(T.ownVideo)+'<details class="cq no-print" style="margin:14px 0"><summary>Boshqa video qo\'shish (YouTube havolasi yoki kompyuterdagi fayl)</summary>':'')+'<div class="grid2"><div><h3 style="margin-top:0">Video dars</h3><div data-video style="aspect-ratio:16/9;background:#0f1722;border-radius:12px;display:grid;place-items:center;color:#9fb0c4;overflow:hidden;text-align:center;padding:10px">'+videoEmbed(v)+'</div>'+
   '<div class="no-print" style="display:grid;gap:8px;margin-top:10px"><input type="url" data-vurl placeholder="YouTube yoki boshqa video havolasi" value="'+esc(v)+'"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-vset>Videoni qo\'yish</button><label class="btn" style="font-weight:600">Kompyuterdagi fayl…<input type="file" accept="video/*" data-vfile hidden></label></div></div>'+
-  qrBlock(tk+":video","Video uchun QR kod","Video havolasini kiriting. O'quvchilar uni telefonda ko'radi.",v)+'</div>'+
+  '</div>'+
   '<div><h3 style="margin-top:0">3D model qaysi dasturda bajarildi?</h3><p>Bu bo\'limdagi '+soft+' modeli uchun <b>KOMPAS-3D</b> (o\'quv versiyasi bepul, rus/o\'zbek tilida darsliklar ko\'p) tavsiya etiladi. Xuddi shu ishni <b>AutoCAD</b>, <b>Fusion 360</b> yoki <b>Tinkercad</b> da ham bajarish mumkin.</p>'+
   '<h4>KOMPAS-3D da bajarish tartibi</h4><ol><li><b>Fayl → Yangi → Detal</b> (Деталь).</li><li>Old tekislikda (Фронтальная) <b>eskiz</b> ochiladi.</li><li>Aylanalar (Окружность) va kesmalar (Отрезок) bilan detal konturi chiziladi.</li><li><b>Yumaloqlash</b> (Скругление) buyrug\'i bilan burchaklarga R beriladi. Ikki aylana uchun <b>Urinma aylana</b> (Окружность касательная к 2 кривым) ishlatiladi.</li><li>Eskizdan chiqib, <b>Siqib chiqarish</b> (Элемент выдавливания) bilan qalinlik beriladi (10–12 mm).</li><li>Teshiklar eskizda aylana qilib chizilsa, ular avtomatik o\'yiladi.</li><li>Model <b>.STL / .GLB</b> formatda saqlanib, Sketchfab ga yuklanadi va AR uchun QR olinadi.</li></ol>'+
   '<h4>AutoCAD da 2D tutashmalar</h4><ul><li><b>FILLET</b> (СОПРЯЖЕНИЕ) — radius kiritilib, ikki chiziq yoki chiziq va aylana tanlanadi. Tutashma avtomatik yasaladi.</li><li><b>CIRCLE → TTR</b> (Касательная, касательная, радиус) — ikki obyektga urinuvchi uchinchi aylana chiziladi. So\'ng <b>TRIM</b> bilan ortiqchasi qirqiladi.</li><li><b>DIMRADIUS / DIMDIAMETER</b> — R va Ø o\'lchamlari qo\'yiladi.</li></ul>'+
@@ -1115,9 +1130,10 @@ function worksheetHTML(w){
 }
 var SITE="https://jorayevagulnoza191-rgb.github.io/simulyator1/";
 function selfLink(sec,key){var base=/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)&&!/claude|anthropic/.test(location.hostname)?location.href.split("#")[0]:SITE;return base+"#"+state.topic+"/"+sec+(key?"/"+key:"")}
-function selfQR(sec,title,key){
-  var u=selfLink(sec,key);
-  return '<div class="qrbox" data-selfqr="'+sec+'"><div class="qr">'+QR.svg(u,160)+'</div><div class="f"><b>'+title+'</b><span style="font-size:14px;color:var(--muted)">O\'quvchi QR kodni telefon kamerasi bilan skanerlaydi va aynan shu bo\'lim ochiladi. Claude akkaunti kerak emas.</span>'+'<a href="'+esc(u)+'" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all">'+esc(u)+'</a>'+'</div></div>';
+function soloLink(k){var base=/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)&&!/claude|anthropic/.test(location.hostname)?location.href.split("#")[0]:SITE;return base+"#solo/"+k}
+function selfQR(k,title){
+  var u=soloLink(k);
+  return '<div class="qrbox" data-selfqr="'+k+'"><div class="qr">'+QR.svg(u,160)+'</div><div class="f"><b>'+title+'</b><span style="font-size:14px;color:var(--muted)">O\'quvchi QR kodni telefon kamerasi bilan skanerlaydi va faqat shu narsa (qo\'llanmaning boshqa qismlarisiz) ochiladi. Claude akkaunti kerak emas.</span>'+'<a href="'+esc(u)+'" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all">'+esc(u)+'</a>'+'</div></div>';
 }
 function defFig(k){
   if(k==="d104")return staticFig("right",{R:140},"Burchak R radiusli yoy bilan yumaloqlangan: A, B — o'tish nuqtalari, O — markaz");
@@ -1130,15 +1146,14 @@ function embedHTML(list,sec){
   var sel=0;for(var i=0;i<list.length;i++)if(list[i].key===state.tab)sel=i;
   var tabs=list.length>1?'<div class="no-print" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+list.map(function(e,i){return '<button class="btn" data-etab="'+i+'" aria-pressed="'+(i===sel)+'">'+e.tab+'</button>'}).join("")+'</div>':"";
   var e=list[sel];
-  return '<div class="embed card" style="padding:14px;background:#fbfcfe" data-elist=\''+esc(JSON.stringify(list))+'\'>'+tabs+'<h3 style="margin-top:0" data-etitle>'+e.t+'</h3><p style="margin-top:0" data-edesc>'+e.d+'</p>'+selfQR(sec,"Telefonda ochish uchun QR kod",list.length>1?e.key:"")+
+  return '<div class="embed card" style="padding:14px;background:#fbfcfe" data-elist=\''+esc(JSON.stringify(list))+'\'>'+tabs+'<h3 style="margin-top:0" data-etitle>'+e.t+'</h3><p style="margin-top:0" data-edesc>'+e.d+'</p>'+selfQR(e.key,"Telefonda ochish uchun QR kod")+
   '<div data-embed="'+e.key+'" contenteditable="false" style="border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#eceff3"></div>'+
   '<p class="no-print" style="margin:10px 0 0"><button class="btn" data-embedopen>⤢ Alohida oynada ochish</button></p></div>';
 }
 function animHTML(T,tk){
-  if(T.noStepper)return embedHTML(T.animEmbed,"anim")+qrBlock(tk+":ppt","PowerPoint / taqdimot havolasi uchun QR","Taqdimot havolasini kiriting.",T.ppt)+'<div class="note"><b>PowerPoint uchun maslahat:</b> har bir yasash qadamini alohida shakl qilib chizing va unga "Появление / Paydo bo\'lish" animatsiyasini «По щелчку» rejimida bering. Qadamlar tartibini yuqoridagi animatsiyalardan oling.</div>';
+  if(T.noStepper)return embedHTML(T.animEmbed,"anim");
   return (T.animEmbed?embedHTML(T.animEmbed,"anim")+'<h3>Boshqa yasash usullari</h3>':'')+'<p>Yuqoridagi tugmalar bilan yasash turini tanlang. «Keyingi» tugmasi har bosilganda bitta qadam chiziladi. Sinfda proyektor orqali ko\'rsatish uchun qulay. Surgichlar bilan radius va burchakni o\'zgartirib, yasash qanday o\'zgarishini ko\'rsating.</p><div data-stepper contenteditable="false"></div>'+
-  qrBlock(tk+":ppt","PowerPoint / animatsiya havolasi uchun QR","Taqdimot yoki animatsiya havolasini kiriting."+(T.ppt?" Standart havola — siz tayyorlagan animatsiya sahifasi. U siz ulashguningizcha faqat sizga ochiq.":""),T.ppt)+
-  '<div class="note"><b>PowerPoint uchun maslahat:</b> har bir yasash qadamini alohida shakl qilib chizing va unga "Появление / Paydo bo\'lish" yoki "Выцветание" animatsiyasini «По щелчку» rejimida bering. Yordamchi chiziqlarni ko\'k, natijaviy yoyni qizil rangda bering. Bu yerdagi animatsiyadagi qadamlar tartibidan foydalanishingiz mumkin.</div>';
+  selfQR("anim-"+tk,"Animatsiyani telefonda ochish uchun QR kod");
 }
 function metodHTML(T){
   return '<p>Bu bo\'lim faqat o\'qituvchi uchun. U o\'quvchilar ko\'radigan 13 bo\'limga kirmaydi.</p><h3>Dars rejasi (45 daqiqa)</h3><table><tr><th>Bosqich</th><th>Vaqt</th><th>O\'qituvchi va o\'quvchi faoliyati</th><th>Bo\'limlar</th></tr>'+
@@ -1157,7 +1172,7 @@ function quizHTML(T){
     return '<div class="q" data-q="'+j+'" data-ans="'+q[2]+'"><div class="qt">'+(j+1)+'. '+q[0]+'</div>'+q[1].map(function(o,k){return '<label><input type="radio" name="q'+j+'" value="'+k+'"> <span><b>'+"ABCD"[k]+')</b> '+o+'</span></label>'}).join("")+'<div class="ex">💡 '+q[3]+'</div></div>'}).join("")+
   '<div class="score" data-score></div><p class="no-print" style="display:flex;gap:8px"><button class="btn primary" data-qcheck>Natijani ko\'rish</button><button class="btn" data-qreset>Qayta boshlash</button></p>';
 }
-function cwHTML(T){
+function cwHTML(T,solo){
   var d=CW[T.cw],grid={},nums={},n=0,list=d.words.slice().sort(function(a,b){return a.r-b.r||a.c-b.c});
   list.forEach(function(w){var key=w.r+","+w.c;if(!nums[key])nums[key]=++n;w.n=nums[key];
     for(var i=0;i<w.w.length;i++){var r=w.r+(w.d==="D"?i:0),c=w.c+(w.d==="A"?i:0);grid[r+","+c]=w.w[i]}});
@@ -1165,10 +1180,11 @@ function cwHTML(T){
     cells+=grid[k]?'<div class="c on" data-k="'+k+'">'+(nums[k]?'<span class="num">'+nums[k]+'</span>':"")+'<input maxlength="1" data-a="'+grid[k]+'" aria-label="katak"></div>':'<div class="c"></div>'}
   var ac=list.filter(function(w){return w.d==="A"}),dn=list.filter(function(w){return w.d==="D"});
   function li(a){return a.map(function(w){return '<li value="'+w.n+'">'+w.clue+' <span class="tag">'+w.w.length+' harf</span></li>'}).join("")}
-  var h='<div class="cw-wrap"><div><div class="cw" contenteditable="false" style="--cols:'+d.cols+';grid-template-columns:repeat('+d.cols+',32px)">'+cells+'</div><p class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn primary" data-cwcheck>Tekshirish</button><button class="btn" data-cwshow>Javoblarni ko\'rsatish</button><button class="btn" data-cwclear>Tozalash</button></p><div data-cwres style="font-weight:600"></div></div>'+
+  var h='<div class="cw-wrap"><div><div class="cw" contenteditable="false" style="--cols:'+d.cols+';grid-template-columns:repeat('+d.cols+',var(--cs,32px))">'+cells+'</div><p class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn primary" data-cwcheck>Tekshirish</button><button class="btn" data-cwshow>Javoblarni ko\'rsatish</button><button class="btn" data-cwclear>Tozalash</button></p><div data-cwres style="font-weight:600"></div></div>'+
    '<div class="clues"><h4 style="margin-top:0">Gorizontal →</h4><ol>'+li(ac)+'</ol><h4>Vertikal ↓</h4><ol>'+li(dn)+'</ol></div></div>';
+  if(solo)return h;
+  h+='<h3>Krossvordni telefonda yechish</h3>'+selfQR("cw-"+state.topic,"Interaktiv krossvord uchun QR kod");
   if(T.cwLink)h+='<h3>LearningApps krossvordi</h3><p>Siz tayyorlagan onlayn krossvord. O\'quvchilar QR orqali telefonda ochishi mumkin.</p>'+qrBlock(state.topic+":cw","LearningApps havolasi","",T.cwLink);
-  else h+='<h3>Onlayn krossvord uchun QR</h3>'+qrBlock(state.topic+":cw","LearningApps havolasi","Agar LearningApps da shu mavzuga krossvord tayyorlasangiz, havolasini kiriting.","");
   return h;
 }
 function rubricHTML(T){
@@ -1202,7 +1218,7 @@ function mount(root){
   $$("[data-viewer]",root).forEach(function(h){live.push(new Viewer(h,h.dataset.viewer))});
   $$("[data-stepper]",root).forEach(function(h){live.push(new Stepper(h,TOPICS[state.topic].modes))});
   $$("[data-embed]",root).forEach(loadEmbed);
-  $$("[data-ownvideo]",root).forEach(function(h){h.innerHTML='<video controls playsinline preload="metadata" poster="'+VIDS[h.dataset.ownvideo+"_poster"]+'" style="width:100%;height:100%;display:block;background:#000" src="'+vidURL(h.dataset.ownvideo)+'"></video>'});
+  $$("[data-ownvideo]",root).forEach(function(h){h.innerHTML='<video controls playsinline preload="metadata" poster="'+VIDS[h.dataset.ownvideo+"_poster"]+'" style="width:100%;height:100%;display:block;background:#000"><source src="'+h.dataset.ownvideo+'.mp4" type="video/mp4"><source src="'+vidURL(h.dataset.ownvideo)+'" type="video/mp4"></video>';var v=h.querySelector("video"),ss=v.querySelectorAll("source");ss[ss.length-1].addEventListener("error",function(){h.insertAdjacentHTML("beforeend",'<div class="note" style="position:absolute;left:8px;right:8px;bottom:8px">Video bu oynada ochilmadi. Qo\'llanmani brauzerda (Chrome) yoki sayt havolasi orqali oching.</div>')})});
 }
 function loadEmbed(h){
   {
@@ -1221,6 +1237,7 @@ function loadEmbed(h){
 function render(all){
   var T=TOPICS[state.topic];
   $("#title").textContent=T.title;$("#subtitle").textContent=T.sub;
+  try{var tu=soloLink("x").replace(/#solo\/x$/,"")+"#"+state.topic+"/nazariya",tq=$("#topicQR");if(tq.dataset.u!==tu){tq.dataset.u=tu;tq.href=tu;tq.innerHTML=QR.svg(tu,120)}}catch(e){}
   renderTopics();renderNav();
   var m=$("#main");
   if(all){m.innerHTML=SECS.map(function(s){return secHTML(T,s.id)}).join("")}
@@ -1241,8 +1258,8 @@ function cleanBody(sec){
   $$("[contenteditable]",c).forEach(function(n){if(!n.matches("[data-stepper],[data-viewer],.cw,.qrbox .qr"))n.removeAttribute("contenteditable")});
   return c.innerHTML;
 }
-function saveEdit(){var sec=$("section.sec");if(!sec)return;var key=state.topic+"/"+sec.dataset.sec;EDITS[key]=cleanBody(sec);var mine=store.get("edits",{});mine[key]=EDITS[key];store.set("edits",mine)}
-function resetEdit(){var sec=$("section.sec");if(!sec)return;var key=state.topic+"/"+sec.dataset.sec;delete EDITS[key];var mine=store.get("edits",{});delete mine[key];store.set("edits",mine)}
+function saveEdit(){var sec=$("section.sec");if(!sec)return;var key=state.topic+"/"+sec.dataset.sec;EDITS[key]=cleanBody(sec);var mine=store.get("edits_v17",{});mine[key]=EDITS[key];store.set("edits_v17",mine)}
+function resetEdit(){var sec=$("section.sec");if(!sec)return;var key=state.topic+"/"+sec.dataset.sec;delete EDITS[key];var mine=store.get("edits_v17",{});delete mine[key];store.set("edits_v17",mine)}
 function exportFile(){
   if(state.edit){saveEdit()}
   var json=JSON.stringify(EDITS).replace(/<\//g,"<\\/");
@@ -1293,7 +1310,7 @@ document.addEventListener("click",function(e){
   if(t){var card=t.closest(".embed"),list=JSON.parse(card.dataset.elist),it=list[+t.dataset.etab];
     $$("[data-etab]",card).forEach(function(x){x.setAttribute("aria-pressed",x===t)});
     $("[data-etitle]",card).textContent=it.t;$("[data-edesc]",card).textContent=it.d;var h=$("[data-embed]",card);h.dataset.embed=it.key;loadEmbed(h);
-    state.tab=it.key;var qb=$("[data-selfqr]",card);if(qb)qb.outerHTML=selfQR(qb.dataset.selfqr,"Telefonda ochish uchun QR kod",it.key);
+    state.tab=it.key;var qb=$("[data-selfqr]",card);if(qb)qb.outerHTML=selfQR(it.key,"Telefonda ochish uchun QR kod");
     try{history.replaceState(null,"","#"+state.topic+"/"+state.sec+"/"+it.key)}catch(err){}return}
   var g=e.target.closest("[data-animgo]");if(g){e.preventDefault();state.sec="anim";state.tab=g.dataset.animgo;render();window.scrollTo(0,0);return}
   var b=e.target.closest("[data-embedopen]");if(!b)return;
@@ -1304,7 +1321,44 @@ document.addEventListener("click",function(e){var b=e.target.closest("[data-wspr
   w.document.write('<!doctype html><title>Ish varag\'i</title><style>@page{size:A4;margin:0}body{margin:0}img{width:210mm;height:297mm;display:block}</style><img src="'+IMG[b.dataset.wsprint]+'" onload="setTimeout(function(){print()},300)">');w.document.close()});
 $("#printBtn").onclick=function(){render(true);setTimeout(function(){window.print();render()},400)};
 document.addEventListener("keydown",function(e){if(e.key==="Escape")$("#lb").classList.remove("on")});
-render();
+var SOLO={
+  "mex":{type:"embed",t:"Krivoship-shatun mexanizmi",back:"t11/detal"},
+  "d104":{type:"embed",t:"10.4-chizma: kalibrning bosqichma-bosqich chizilishi",back:"t10/chizish"},
+  "d111":{type:"embed",t:"11.1-chizma: aylana va to'g'ri chiziqni tutashtirish",back:"t11/anim"},
+  "d114":{type:"embed",t:"11.4-chizma: ikki aylanani tashqi tutashtirish",back:"t11/anim"},
+  "d116":{type:"embed",t:"11.6-chizma: tutashmali detal",back:"t11/anim"},
+  "v-soat":{type:"video",k:"soat",t:"Video: tutashmalar mexanik soatda",back:"t10/video"},
+  "v-tikuv":{type:"video",k:"tikuv",t:"Video: tutashmalar tikuv mashinasida",back:"t11/video"},
+  "m-kalibr":{type:"model",part:"kalibr",t:"3D model: kalibr (10.4-chizma)",back:"t10/model"},
+  "m-quloq":{type:"model",part:"quloq",t:"3D model: chelak qulog'i (11.2-chizma)",back:"t11/model"},
+  "ar-kalibr":{type:"ar",part:"kalibr",t:"Kalibr (10.4-chizma): 3D model va AR",back:"t10/model"},
+  "ar-quloq":{type:"ar",part:"quloq",t:"Chelak qulog'i (11.2-chizma): 3D model va AR",back:"t11/model"},
+  "anim-t10":{type:"anim",topic:"t10",t:"Burchaklarni tutashtirish: bosqichma-bosqich animatsiya",back:"t10/anim"},
+  "anim-t11":{type:"embedlist",topic:"t11",t:"Ikki aylanani tutashtirish: animatsiyalar",back:"t11/anim"},
+  "cw-t10":{type:"cw",topic:"t10",t:"Krossvord: 10-§ Tutashmalar",back:"t10/cw"},
+  "cw-t11":{type:"cw",topic:"t11",t:"Krossvord: 11-§ Ikki aylanani tutashtirish",back:"t11/cw"}};
+function arLink(part,title){var glb=SITE+part+".glb",fb=SITE+"#solo/m-"+part;
+  return "intent://arvr.google.com/scene-viewer/1.0?file="+encodeURIComponent(glb)+"&mode=ar_preferred&title="+encodeURIComponent(title)+"#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url="+encodeURIComponent(fb)+";end;"}
+function soloKey(){var m=location.hash.match(/^#solo\/([\w-]+)/);return m&&SOLO[m[1]]?m[1]:null}
+function renderSolo(k){
+  var o=SOLO[k];document.body.classList.add("solo-mode");document.title=o.t;
+  var box=document.createElement("div");box.className="solo";
+  box.innerHTML='<div class="solo-head"><b>'+o.t+'</b><a class="btn" href="#'+o.back+'" data-soloback>📖 To\'liq qo\'llanma</a></div><div class="solo-body"></div>';
+  document.body.appendChild(box);var h=$(".solo-body",box);
+  if(o.type==="embed"){h.innerHTML='<div data-embed="'+k+'" style="background:#eceff3"></div>';loadEmbed($("[data-embed]",h))}
+  if(o.type==="video"){h.innerHTML='<video controls playsinline autoplay muted poster="'+VIDS[o.k+"_poster"]+'" style="width:100%;max-height:85vh;background:#000;display:block" ><source src="'+o.k+'.mp4" type="video/mp4"><source src="'+vidURL(o.k)+'" type="video/mp4"></video>'}
+  if(o.type==="model"){h.innerHTML='<div></div>';live.push(new Viewer(h.firstChild,o.part))}
+  if(o.type==="ar"){var android=/android/i.test(navigator.userAgent);
+    h.innerHTML='<div class="card" style="padding:14px;margin-bottom:12px;background:#f3f7ff"><a class="btn primary" style="text-decoration:none;display:inline-block;font-size:18px;padding:12px 18px" href="'+esc(arLink(o.part,o.t))+'">📱 AR\'da ko\'rish</a><p style="margin:10px 0 0;font-size:14px;color:var(--muted)">'+(android?'Tugmani bosing, kamerani stol yoki polga qarating: detal haqiqiy o\'lchamda paydo bo\'ladi. Uni barmoq bilan surish va aylantirish mumkin.':'AR Android telefonlarda ishlaydi. Bu qurilmada pastdagi 3D modelni barmoq bilan aylantirib ko\'ring.')+'</p></div><div></div>';
+    live.push(new Viewer(h.lastChild,o.part))}
+  if(o.type==="anim"||o.type==="embedlist"||o.type==="cw"){state.topic=o.topic;var T=TOPICS[o.topic];
+    if(o.type==="anim"){h.innerHTML='<div class="card" style="padding:10px"><div></div></div>';live.push(new Stepper(h.firstChild.firstChild,T.modes))}
+    if(o.type==="embedlist"){h.innerHTML=embedHTML(T.animEmbed,"anim");$$("[data-embed]",h).forEach(loadEmbed);var q=$("[data-selfqr]",h);if(q)q.remove()}
+    if(o.type==="cw"){h.innerHTML='<div class="card" style="padding:12px">'+cwHTML(T,true)+'</div>'}}
+  $("[data-soloback]",box).onclick=function(e){e.preventDefault();location.hash=o.back;location.reload()};
+}
+if(soloKey())renderSolo(soloKey());else render();
+window.addEventListener("hashchange",function(){if(soloKey()||document.body.classList.contains("solo-mode"))location.reload()});
 window.__test={CONS:CONS,PARTS:PARTS,render:render,state:state,SECS:SECS,saveEdit:saveEdit,EDITS:EDITS,SRC:function(){return SRC}};
 })();
 </script>
