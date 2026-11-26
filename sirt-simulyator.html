@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sirtlarni fazoda tutashtirish — simulyator</title>
+<style>
+:root{--ink:#111;--mut:#686d6a;--line:#e4e6e3;--bg:#fafaf8;--acc:#1f7a4f;--ok:#1f9a5a;--c0:#e07b1f;--err:#c62828}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI",system-ui,Arial,sans-serif}
+header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:18px 28px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+header span{color:var(--mut);font-size:15px}
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:calc(100vh - 62px)}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+aside{border-right:1px solid var(--line);padding:18px 22px;display:flex;flex-direction:column;gap:20px}
+@media(max-width:860px){aside{border-right:0;border-bottom:1px solid var(--line)}}
+.lab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin:0 0 8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:inherit;font-size:14px;padding:8px 12px;border:1px solid #d4d7d3;background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);min-height:38px}
+.seg button:hover{border-color:#9aa09c}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 46px;align-items:center;gap:8px;margin:6px 0}
+.row label{font-size:14px;color:#333}
+.row output{font-size:14px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.row input[type=range]{grid-column:1 / span 2;width:100%;accent-color:var(--ink);margin:0}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;margin:5px 0;cursor:pointer}
+.chk input{accent-color:var(--ink);width:16px;height:16px}
+main{padding:18px 24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.stage{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
+.tools{position:absolute;right:12px;top:12px;display:flex;gap:6px}
+.tools button{font:inherit;font-size:13px;min-width:36px;height:34px;padding:0 10px;border:1px solid #d4d7d3;background:rgba(255,255,255,.9);border-radius:8px;cursor:pointer}
+.tools button:hover{border-color:#9aa09c}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:14px;padding:9px 16px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;min-height:40px}
+.btn.ghost{background:#fff;color:var(--ink);border-color:#d4d7d3}
+.formula{font-size:15px;color:#222;padding:10px 14px;border-left:2px solid var(--ink);background:#fff}
+.formula i{font-family:"Cambria Math","Times New Roman",serif;font-size:17px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stats div{background:#fff;padding:10px 14px}
+.stats b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--mut);letter-spacing:.04em}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:#333}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.verdict{font-size:15px;min-height:22px;color:#222}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sirtlarni fazoda tutashtirish</h1>
+  <span>Bir xil sirt bo'lagi elementidan sirt konstruksiyalash</span>
+</header>
+<div class="app">
+<aside>
+  <div>
+    <p class="lab">1 · Element</p>
+    <div class="seg" id="segEl">
+      <button data-el="gipar" class="on">Giperbolik paraboloid</button>
+      <button data-el="silindr">Silindrik bo'lak</button>
+      <button data-el="sfera">Sferik bo'lak</button>
+      <button data-el="gelikoid">Gelikoid bo'lagi</button>
+    </div>
+    <div id="pEl" style="margin-top:8px"></div>
+  </div>
+  <div>
+    <p class="lab">2 · Konstruksiyalash usuli</p>
+    <div class="seg" id="segM">
+      <button data-m="kochirish">Ko'chirish</button>
+      <button data-m="burish" class="on">Burish</button>
+      <button data-m="kozgu">Ko'zgu</button>
+      <button data-m="vint">Vint</button>
+    </div>
+    <div id="pM" style="margin-top:8px"></div>
+  </div>
+  <div>
+    <p class="lab">3 · Ko'rinish</p>
+    <label class="chk"><input type="checkbox" id="cSeam" checked>Choklarni ko'rsatish</label>
+    <label class="chk"><input type="checkbox" id="cGrid" checked>To'r chiziqlari</label>
+    <label class="chk"><input type="checkbox" id="cOrig" checked>Asl elementni ajratish</label>
+  </div>
+  <div>
+    <p class="lab">Tayyor misollar</p>
+    <div class="seg" id="segP">
+      <button data-p="soyabon">Gipar soyabon</button>
+      <button data-p="tom">To'lqinsimon tom</button>
+      <button data-p="tonna">Tonna gumbaz</button>
+      <button data-p="arra">Arrasimon tom</button>
+      <button data-p="gumbaz">Sferik gumbaz</button>
+      <button data-p="vint">Vint sirt</button>
+      <button data-p="vintx">Vint (uzilishli)</button>
+    </div>
+  </div>
+</aside>
+<main>
+  <div class="stage">
+    <canvas id="cv" width="960" height="600"></canvas>
+    <div class="tools">
+      <button data-view="iso" title="Izometriya">Izo</button>
+      <button data-view="front" title="Old">Old</button>
+      <button data-view="top" title="Ust">Ust</button>
+      <button id="zIn" aria-label="Yaqinlashtirish">+</button>
+      <button id="zOut" aria-label="Uzoqlashtirish">−</button>
+    </div>
+  </div>
+  <div class="bar">
+    <button class="btn" id="bAsm">▶ Yig'ish</button>
+    <button class="btn ghost" id="bSpin">Aylantirish</button>
+  </div>
+  <div class="formula" id="formula"></div>
+  <div class="stats">
+    <div><b id="sN">0</b><span>ELEMENTLAR</span></div>
+    <div><b id="sG">0</b><span>SILLIQ CHOK (G1)</span></div>
+    <div><b id="sC">0</b><span>BURCHAKLI CHOK (C0)</span></div>
+    <div><b id="sR">0</b><span>UZILISH</span></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--ok)"></i>Silliq tutashish</span>
+    <span><i style="background:var(--c0)"></i>Sinish burchagi bilan</span>
+    <span><i style="background:var(--err)"></i>Uzilish (chetlar mos emas)</span>
+    <span><i style="background:#222;height:2px"></i>Erkin chegara</span>
+  </div>
+  <div class="verdict" id="verdict"></div>
+</main>
+</div>
+
+<script>
+"use strict";
+/* ---------------- state ---------------- */
+const S={el:"gipar",m:"burish",
+  p:{h:1.0,th:40,al:90,gal:30,gh:0.3,nx:3,ny:2,k:1.0,n:4,ang:90,auto:true,vn:10,vang:36,vh:0.35},
+  yaw:-38,pitch:30,zoom:1,seams:true,grid:true,orig:true,asm:1e9};
+const D2R=Math.PI/180;
+/* ---------------- elements ---------------- */
+const EL={
+  gipar:{name:"Giperbolik paraboloid",size:[2,2],
+    f:(u,v,p)=>[2*u,2*v,p.h*(u+v-2*u*v)],
+    params:[["h","Balandlik h",0.2,1.6,0.1]]},
+  silindr:{name:"Silindrik bo'lak",size:[2,2],
+    f:(u,v,p)=>{const t=p.th*D2R,r=1/Math.sin(t),a=-t+2*t*u;return [1+r*Math.sin(a),2*v,r*Math.cos(a)-r*Math.cos(t)];},
+    params:[["th","Egrilik burchagi θ°",10,80,1]]},
+  sfera:{name:"Sferik bo'lak",size:[2,2],
+    f:(u,v,p)=>{const a=p.al*D2R*u,th=Math.PI/2*v,r=2;return [r*Math.sin(th)*Math.cos(a),r*Math.sin(th)*Math.sin(a),r*Math.cos(th)];},
+    params:[["al","Bo'lak burchagi α°",15,180,5]]},
+  gelikoid:{name:"Gelikoid bo'lagi",size:[2,2],
+    f:(u,v,p)=>{const a=p.gal*D2R*u,r=0.6+1.6*v;return [r*Math.cos(a),r*Math.sin(a),p.gh*u];},
+    params:[["gal","Bo'lak burchagi α°",10,90,5],["gh","Ko'tarilish Δz",0,1,0.05]]},
+};
+const METH={
+  kochirish:{params:[["nx","x bo'yicha soni",1,5,1],["ny","y bo'yicha soni",1,5,1],["k","Qadam koeffitsiyenti",0.8,1.3,0.02]],
+    f:"Ko'chirish: <i>P<sub>ij</sub> = P + i·a + j·b</i> — element vektorlar bo'yicha parallel ko'chiriladi."},
+  burish:{params:[["n","Elementlar soni n",2,12,1],["ang","Burish burchagi φ°",10,180,1]],
+    f:"Burish: <i>P<sub>i</sub> = R<sub>z</sub>(i·φ)·P</i> — element vertikal o'q atrofida burib takrorlanadi."},
+  kozgu:{params:[["nx","x bo'yicha soni",1,5,1],["ny","y bo'yicha soni",1,5,1]],
+    f:"Ko'zgu simmetriya: qo'shni element umumiy chekka tekisligiga nisbatan akslantiriladi."},
+  vint:{params:[["vn","Elementlar soni",2,16,1],["vang","Burish burchagi φ°",10,120,1],["vh","Ko'tarilish h",0,1.5,0.05]],
+    f:"Vint: <i>P<sub>i</sub> = R<sub>z</sub>(i·φ)·P + i·h·k</i> — burish va ko'tarish birgalikda."},
+};
+/* ---------------- matrices (3x4) ---------------- */
+const I=()=>[1,0,0,0, 0,1,0,0, 0,0,1,0];
+const T=(x,y,z)=>[1,0,0,x, 0,1,0,y, 0,0,1,z];
+const Rz=a=>{const c=Math.cos(a),s=Math.sin(a);return [c,-s,0,0, s,c,0,0, 0,0,1,0];};
+const Sc=(x,y,z)=>[x,0,0,0, 0,y,0,0, 0,0,z,0];
+function mul(A,B){const C=new Array(12);for(let r=0;r<3;r++){for(let c=0;c<4;c++){let s=r*4;C[r*4+c]=A[s]*B[c]+A[s+1]*B[4+c]+A[s+2]*B[8+c]+(c===3?A[s+3]:0);}}return C;}
+const ap=(M,p)=>[M[0]*p[0]+M[1]*p[1]+M[2]*p[2]+M[3],M[4]*p[0]+M[5]*p[1]+M[6]*p[2]+M[7],M[8]*p[0]+M[9]*p[1]+M[10]*p[2]+M[11]];
+const apv=(M,p)=>[M[0]*p[0]+M[1]*p[1]+M[2]*p[2],M[4]*p[0]+M[5]*p[1]+M[6]*p[2],M[8]*p[0]+M[9]*p[1]+M[10]*p[2]];
+function copies(){
+  const p=S.p,[dx,dy]=EL[S.el].size,L=[];
+  if(S.m==="kochirish"){for(let j=0;j<p.ny;j++)for(let i=0;i<p.nx;i++)L.push(T(i*dx*p.k,j*dy*p.k,0));}
+  else if(S.m==="burish"){const a=(S.p.auto?360/p.n:p.ang)*D2R;for(let i=0;i<p.n;i++)L.push(Rz(i*a));}
+  else if(S.m==="kozgu"){for(let j=0;j<p.ny;j++)for(let i=0;i<p.nx;i++){let M=T(i*dx,j*dy,0);
+      if(i%2)M=mul(M,mul(T(dx,0,0),Sc(-1,1,1)));if(j%2)M=mul(M,mul(T(0,dy,0),Sc(1,-1,1)));L.push(M);}}
+  else{for(let i=0;i<p.vn;i++)L.push(mul(T(0,0,i*p.vh),Rz(i*p.vang*D2R)));}
+  return L;
+}
+/* ---------------- local mesh ---------------- */
+const N=20;
+function localMesh(){
+  const f=EL[S.el].f,p=S.p,P=[],Nn=[],e=1e-4;
+  for(let j=0;j<=N;j++)for(let i=0;i<=N;i++){const u=i/N,v=j/N;P.push(f(u,v,p));Nn.push(normal(f,u,v,p));}
+  return {P,Nn};
+}
+function normal(f,u,v,p){const e=1e-3;
+  const uu=Math.min(1-e,Math.max(e,u)),vv=Math.min(1-e,Math.max(e,v));
+  const a=f(uu+e,vv,p),b=f(uu-e,vv,p),c=f(uu,vv+e,p),d=f(uu,vv-e,p);
+  const tu=[a[0]-b[0],a[1]-b[1],a[2]-b[2]],tv=[c[0]-d[0],c[1]-d[1],c[2]-d[2]];
+  const n=[tu[1]*tv[2]-tu[2]*tv[1],tu[2]*tv[0]-tu[0]*tv[2],tu[0]*tv[1]-tu[1]*tv[0]];const l=Math.hypot(...n)||1;return [n[0]/l,n[1]/l,n[2]/l];}
+/* ---------------- seam analysis ---------------- */
+const K=11;
+function edgesOf(M){
+  const f=EL[S.el].f,p=S.p,E=[];
+  const defs=[t=>[t,0],t=>[1,t],t=>[t,1],t=>[0,t]];
+  const outs=[[0,-1],[1,0],[0,1],[-1,0]];
+  defs.forEach((d,di)=>{const pts=[],ns=[];for(let k=0;k<K;k++){const [u,v]=d(k/(K-1));pts.push(ap(M,f(u,v,p)));ns.push(apv(M,normal(f,u,v,p)));}
+    let L=0;for(let k=1;k<K;k++)L+=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1],pts[k][2]-pts[k-1][2]);
+    const [mu,mv]=d(0.5),[ou,ov]=outs[di],e=0.02,q0=f(mu-ou*e,mv-ov*e,p),q1=f(mu,mv,p);
+    let out=apv(M,[q1[0]-q0[0],q1[1]-q0[1],q1[2]-q0[2]]);const ol=Math.hypot(...out)||1;out=out.map(x=>x/ol);
+    if(L>1e-3)E.push({pts,ns,L,used:false,mid:pts[(K-1)/2],out});});
+  return E;
+}
+function analyze(Ms){
+  const all=Ms.map((M,ci)=>edgesOf(M).map(e=>({...e,ci})));
+  const seams=[],flat=all.flat();
+  let g=0,c=0,r=0,creases=[];
+  const dist=(A,B,rev)=>{let s=0;for(let k=0;k<K;k++){const b=B[rev?K-1-k:k];s+=Math.hypot(A[k][0]-b[0],A[k][1]-b[1],A[k][2]-b[2]);}return s/K;};
+  for(let a=0;a<flat.length;a++)for(let b=a+1;b<flat.length;b++){
+    const A=flat[a],B=flat[b];if(A.ci===B.ci)continue;
+    const md=Math.hypot(A.mid[0]-B.mid[0],A.mid[1]-B.mid[1],A.mid[2]-B.mid[2]);if(md>1.2)continue;
+    const d0=dist(A.pts,B.pts,false),d1=dist(A.pts,B.pts,true),rev=d1<d0,d=Math.min(d0,d1);
+    if(d<0.03){let s=0,n=0;for(let k=1;k<K-1;k++){const na=A.ns[k],nb=B.ns[rev?K-1-k:k];const dt=Math.abs(na[0]*nb[0]+na[1]*nb[1]+na[2]*nb[2]);s+=Math.acos(Math.min(1,dt))/D2R;n++;}
+      const cr=s/n;A.used=B.used=true;
+      if(cr<3){g++;seams.push({pts:A.pts,t:"g"});}else{c++;creases.push(cr);seams.push({pts:A.pts,t:"c"});}}
+    else if(d<0.7&&!A.used&&!B.used){
+      const da=[A.pts[K-1][0]-A.pts[0][0],A.pts[K-1][1]-A.pts[0][1],A.pts[K-1][2]-A.pts[0][2]],db=[B.pts[K-1][0]-B.pts[0][0],B.pts[K-1][1]-B.pts[0][1],B.pts[K-1][2]-B.pts[0][2]];
+      const cs=Math.abs(da[0]*db[0]+da[1]*db[1]+da[2]*db[2])/(Math.hypot(...da)*Math.hypot(...db)||1);
+      const oo=A.out[0]*B.out[0]+A.out[1]*B.out[1]+A.out[2]*B.out[2];
+      const vm=[B.mid[0]-A.mid[0],B.mid[1]-A.mid[1],B.mid[2]-A.mid[2]];
+      const facing=md>0.02?((vm[0]*A.out[0]+vm[1]*A.out[1]+vm[2]*A.out[2])>0.3*md&&-(vm[0]*B.out[0]+vm[1]*B.out[1]+vm[2]*B.out[2])>0.3*md):oo<-0.5;
+      if(cs>0.5&&md<0.9&&(facing||(oo<-0.7&&md<0.6))){r++;A.used=B.used=true;seams.push({pts:A.pts,t:"r"});seams.push({pts:B.pts,t:"r"});}
+    }
+  }
+  const free=flat.filter(e=>!e.used).map(e=>({pts:e.pts,t:"f"}));
+  return {seams:[...seams,...free],g,c,r,crease:creases.length?creases.reduce((a,b)=>a+b,0)/creases.length:0};
+}
+/* ---------------- renderer ---------------- */
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d"),W=cv.width,H=cv.height;
+const img=ctx.createImageData(W,H),pix=new Uint32Array(img.data.buffer),zb=new Float32Array(W*H);
+let cache=null; // {local, Ms, bbox, ana}
+function rebuild(){
+  const local=localMesh(),Ms=copies();
+  let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+  for(const M of Ms)for(let k=0;k<local.P.length;k+=7){const q=ap(M,local.P[k]);for(let t=0;t<3;t++){mn[t]=Math.min(mn[t],q[t]);mx[t]=Math.max(mx[t],q[t]);}}
+  const ctr=[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2],rad=Math.max(1,Math.hypot(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2])/2);
+  cache={local,Ms,ctr,rad,mn,mx,ana:analyze(Ms)};
+  updatePanel();
+}
+function view(){const y=S.yaw*D2R,p=S.pitch*D2R,cy=Math.cos(y),sy=Math.sin(y),cp=Math.cos(p),sp=Math.sin(p);
+  const sc=Math.min(W,H)*0.42/cache.rad*S.zoom,c=cache.ctr;
+  return q=>{const x0=q[0]-c[0],y0=q[1]-c[1],z0=q[2]-c[2];const x1=x0*cy-y0*sy,y1=x0*sy+y0*cy;const d=y1*cp-z0*sp,z2=y1*sp+z0*cp;return [W/2+sc*x1,H/2-sc*z2,d];};}
+function viewN(){const y=S.yaw*D2R,p=S.pitch*D2R,cy=Math.cos(y),sy=Math.sin(y),cp=Math.cos(p),sp=Math.sin(p);
+  return n=>{const x1=n[0]*cy-n[1]*sy,y1=n[0]*sy+n[1]*cy;return [x1,y1*cp-n[2]*sp,y1*sp+n[2]*cp];};}
+const LGT=(()=>{const l=[-0.45,-0.65,0.62],n=Math.hypot(...l);return l.map(v=>v/n);})();
+function shade(n){const d=Math.abs(n[0]*LGT[0]+n[1]*LGT[1]+n[2]*LGT[2]);const h=[LGT[0],LGT[1]-1,LGT[2]],hl=Math.hypot(...h);
+  const s=Math.pow(Math.abs((n[0]*h[0]+n[1]*h[1]+n[2]*h[2])/hl),40);return Math.min(1.15,0.42+0.55*d+0.25*s);}
+function tri(a,b,c,ia,ib,ic,col){
+  const minx=Math.max(0,Math.floor(Math.min(a[0],b[0],c[0]))),maxx=Math.min(W-1,Math.ceil(Math.max(a[0],b[0],c[0])));
+  const miny=Math.max(0,Math.floor(Math.min(a[1],b[1],c[1]))),maxy=Math.min(H-1,Math.ceil(Math.max(a[1],b[1],c[1])));
+  const ar=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);if(Math.abs(ar)<1e-9)return;
+  for(let y=miny;y<=maxy;y++)for(let x=minx;x<=maxx;x++){const px=x+.5,py=y+.5;
+    const w0=((b[0]-px)*(c[1]-py)-(b[1]-py)*(c[0]-px))/ar,w1=((c[0]-px)*(a[1]-py)-(c[1]-py)*(a[0]-px))/ar,w2=1-w0-w1;
+    if(w0<-1e-5||w1<-1e-5||w2<-1e-5)continue;const z=w0*a[2]+w1*b[2]+w2*c[2],i=y*W+x;
+    if(z<zb[i]){zb[i]=z;const s=w0*ia+w1*ib+w2*ic;
+      pix[i]=0xff000000|(Math.min(255,col[2]*s|0)<<16)|(Math.min(255,col[1]*s|0)<<8)|Math.min(255,col[0]*s|0);}}
+}
+function polyline(pts,prj,col,w,bias){
+  let prev=null;
+  for(const q of pts){const s=prj(q);if(prev){const n=Math.ceil(Math.hypot(s[0]-prev[0],s[1]-prev[1])*1.5)+1;
+    for(let k=0;k<=n;k++){const t=k/n,x=prev[0]+(s[0]-prev[0])*t,y=prev[1]+(s[1]-prev[1])*t,z=prev[2]+(s[2]-prev[2])*t;
+      const xi=Math.round(x),yi=Math.round(y);
+      for(let dy=-(w>>1);dy<=(w-1>>1)+0;dy++)for(let dx=-(w>>1);dx<=(w-1>>1)+0;dx++){const X=xi+dx,Y=yi+dy;if(X<0||Y<0||X>=W||Y>=H)continue;const i=Y*W+X;
+        if(z<=zb[i]+bias){pix[i]=col;}}}}prev=s;}
+}
+const hex=(r,g,b)=>0xff000000|(b<<16)|(g<<8)|r;
+const C_GRID=hex(150,156,152),C_FREE=hex(30,30,30),C_OK=hex(31,154,90),C_C0=hex(224,123,31),C_ERR=hex(198,40,40),C_FLOOR=hex(232,234,231);
+function draw(){
+  if(!cache)rebuild();
+  const prj=view(),vn=viewN(),{local,Ms}=cache;
+  pix.fill(0xfffafafa);zb.fill(1e9);
+  // floor grid
+  const z0=cache.mn[2]-0.02,ext=cache.rad*1.3,cx=cache.ctr[0],cy=cache.ctr[1],step=Math.max(0.5,Math.round(cache.rad/4*2)/2);
+  for(let g=-ext;g<=ext+1e-6;g+=step){polyline([[cx+g,cy-ext,z0],[cx+g,cy+ext,z0]],prj,C_FLOOR,1,0);polyline([[cx-ext,cy+g,z0],[cx+ext,cy+g,z0]],prj,C_FLOOR,1,0);}
+  zb.fill(1e9);
+  const nShow=Ms.length,asmT=S.asm;
+  const visMs=[];
+  Ms.forEach((M0,ci)=>{
+    const pr=Math.max(0,Math.min(1,asmT-ci));if(pr<=0)return;
+    const e=1-(1-pr)*(1-pr)*(1-pr),lift=(1-e)*cache.rad*1.4;
+    const M=mul(T(0,0,lift),M0);visMs.push(M);
+    const col=(ci===0&&S.orig)?[150,205,175]:[236,236,230];
+    const V=local.P.map(q=>prj(ap(M,q))),Sh=local.Nn.map(n=>shade(vn(apv(M,n))));
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const a=j*(N+1)+i,b=a+1,c=a+N+1,d=c+1;
+      tri(V[a],V[b],V[d],Sh[a],Sh[b],Sh[d],col);tri(V[a],V[d],V[c],Sh[a],Sh[d],Sh[c],col);}
+    if(S.grid){const st=N/5;for(let k=st;k<N;k+=st){const r1=[],r2=[];for(let t=0;t<=N;t++){r1.push(ap(M,local.P[k*(N+1)+t]));r2.push(ap(M,local.P[t*(N+1)+k]));}
+      polyline(r1,prj,C_GRID,1,0.02);polyline(r2,prj,C_GRID,1,0.02);}}
+  });
+  const done=asmT>=Ms.length;
+  if(done){for(const s of cache.ana.seams){
+      if(s.t==="f")polyline(s.pts,prj,C_FREE,2,0.04);
+      else if(S.seams)polyline(s.pts,prj,s.t==="g"?C_OK:s.t==="c"?C_C0:C_ERR,4,0.06);
+      else polyline(s.pts,prj,C_FREE,1,0.04);}}
+  else{ // outlines while assembling
+    for(const M of visMs)for(const e of edgesOf(M))polyline(e.pts,prj,C_FREE,2,0.04);}
+  ctx.putImageData(img,0,0);
+}
+let pend=false;function req(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;draw();});}
+/* ---------------- panel ---------------- */
+function slider(host,key,label,min,max,step){
+  const v=S.p[key];const d=document.createElement("div");d.className="row";
+  const fmt=x=>step<1?(+x).toFixed(step<0.1?2:1):String(x);
+  d.innerHTML=`<label>${label}</label><output>${fmt(v)}</output><input type="range" min="${min}" max="${max}" step="${step}" value="${v}" aria-label="${label}">`;
+  const inp=d.querySelector("input"),out=d.querySelector("output");
+  inp.oninput=()=>{S.p[key]=+inp.value;out.textContent=fmt(inp.value);if(key==="ang"){S.p.auto=false;const c=document.getElementById("cAuto");if(c)c.checked=false;}
+    S.asm=1e9;rebuild();req();};
+  host.appendChild(d);
+}
+function buildParams(){
+  const pe=document.getElementById("pEl"),pm=document.getElementById("pM");pe.innerHTML="";pm.innerHTML="";
+  for(const a of EL[S.el].params)slider(pe,...a);
+  for(const a of METH[S.m].params)slider(pm,...a);
+  if(S.m==="burish"){const l=document.createElement("label");l.className="chk";l.innerHTML=`<input type="checkbox" id="cAuto" ${S.p.auto?"checked":""}>φ = 360° / n (yopiq sirt)`;pm.appendChild(l);
+    l.querySelector("input").onchange=e=>{S.p.auto=e.target.checked;S.asm=1e9;rebuild();req();};}
+  document.getElementById("formula").innerHTML=METH[S.m].f;
+}
+function updatePanel(){
+  const a=cache.ana;
+  document.getElementById("sN").textContent=cache.Ms.length;
+  document.getElementById("sG").textContent=a.g;document.getElementById("sC").textContent=a.c;document.getElementById("sR").textContent=a.r;
+  let t;
+  if(cache.Ms.length===1)t="Bitta element. Usul parametrlarini o'zgartirib, elementlar sonini oshiring.";
+  else if(a.r>0)t=`Uzilish bor: ${a.r} ta chokda qo'shni elementlarning chetlari ustma-ust tushmayapti. Usul yoki parametrni o'zgartiring.`;
+  else if(a.c>0&&a.g===0)t=`Elementlar uzluksiz tutashgan, lekin choklarda sinish bor (o'rtacha ${a.crease.toFixed(0)}°).`;
+  else if(a.c>0)t=`Elementlar uzluksiz tutashgan: ${a.g} ta chok silliq, ${a.c} tasida sinish bor (o'rtacha ${a.crease.toFixed(0)}°).`;
+  else if(a.g>0)t="Barcha choklar silliq: sirt uzluksiz va silliq tutashgan.";
+  else t="Elementlar bir-biriga tutashmagan.";
+  document.getElementById("verdict").textContent=t;
+}
+function setSeg(id,attr,val){document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle("on",b.dataset[attr]===val));}
+document.querySelectorAll("#segEl button").forEach(b=>b.onclick=()=>{S.el=b.dataset.el;setSeg("segEl","el",S.el);buildParams();S.asm=1e9;rebuild();req();});
+document.querySelectorAll("#segM button").forEach(b=>b.onclick=()=>{S.m=b.dataset.m;setSeg("segM","m",S.m);buildParams();S.asm=1e9;rebuild();req();});
+document.getElementById("cSeam").onchange=e=>{S.seams=e.target.checked;req();};
+document.getElementById("cGrid").onchange=e=>{S.grid=e.target.checked;req();};
+document.getElementById("cOrig").onchange=e=>{S.orig=e.target.checked;req();};
+const PRE={
+  soyabon:{el:"gipar",m:"burish",p:{h:1.0,n:4,auto:true},yaw:-38,pitch:24},
+  tom:{el:"gipar",m:"kozgu",p:{h:0.9,nx:4,ny:2},yaw:-35,pitch:30},
+  tonna:{el:"silindr",m:"kochirish",p:{th:70,nx:1,ny:4,k:1},yaw:-55,pitch:22},
+  arra:{el:"silindr",m:"kochirish",p:{th:35,nx:4,ny:2,k:1},yaw:-25,pitch:22},
+  gumbaz:{el:"sfera",m:"burish",p:{al:45,n:8,auto:true},yaw:-30,pitch:22},
+  vintx:{el:"sfera",m:"vint",p:{al:30,vn:12,vang:30,vh:0.25},yaw:-35,pitch:20},
+  vint:{el:"gelikoid",m:"vint",p:{gal:30,gh:0.3,vn:16,vang:30,vh:0.3},yaw:-30,pitch:22},
+};
+document.querySelectorAll("#segP button").forEach(b=>b.onclick=()=>{const P=PRE[b.dataset.p];S.el=P.el;S.m=P.m;Object.assign(S.p,P.p);S.yaw=P.yaw;S.pitch=P.pitch;S.zoom=1;
+  setSeg("segEl","el",S.el);setSeg("segM","m",S.m);buildParams();rebuild();assemble();});
+/* ---------------- interaction ---------------- */
+let dr=null;
+cv.addEventListener("pointerdown",e=>{dr=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);cv.style.cursor="grabbing";spin=false;});
+cv.addEventListener("pointermove",e=>{if(!dr)return;S.yaw-=(e.clientX-dr[0])*0.45;S.pitch=Math.max(-89,Math.min(89,S.pitch+(e.clientY-dr[1])*0.45));dr=[e.clientX,e.clientY];req();});
+cv.addEventListener("pointerup",()=>{dr=null;cv.style.cursor="grab";});
+cv.addEventListener("wheel",e=>{e.preventDefault();S.zoom=Math.max(0.4,Math.min(3,S.zoom*(e.deltaY<0?1.1:0.9)));req();},{passive:false});
+document.getElementById("zIn").onclick=()=>{S.zoom=Math.min(3,S.zoom*1.15);req();};
+document.getElementById("zOut").onclick=()=>{S.zoom=Math.max(0.4,S.zoom/1.15);req();};
+const VIEWS={iso:[-45,35.26],front:[0,0],top:[0,89]};
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{const t=VIEWS[b.dataset.view];
+  const st=()=>{let dy=((t[0]-S.yaw)%360+540)%360-180,dp=t[1]-S.pitch;if(Math.abs(dy)<0.4&&Math.abs(dp)<0.4){S.yaw=t[0];S.pitch=t[1];draw();return;}
+    S.yaw+=dy*0.18;S.pitch+=dp*0.18;draw();requestAnimationFrame(st);};st();});
+let spin=false;
+document.getElementById("bSpin").onclick=()=>{spin=!spin;document.getElementById("bSpin").textContent=spin?"To'xtatish":"Aylantirish";
+  const st=()=>{if(!spin)return;S.yaw+=0.6;draw();requestAnimationFrame(st);};st();};
+function assemble(){S.asm=0;const n=cache.Ms.length,t0=performance.now(),rate=Math.max(3,n/3);
+  const st=t=>{S.asm=(t-t0)/1000*rate;draw();if(S.asm<n+0.01)requestAnimationFrame(st);else{S.asm=1e9;draw();}};requestAnimationFrame(st);}
+document.getElementById("bAsm").onclick=assemble;
+buildParams();rebuild();draw();
+window.__S=S;window.__rebuild=()=>{rebuild();draw();};window.__cache=()=>cache;
+</script>
+</body>
+</html>
