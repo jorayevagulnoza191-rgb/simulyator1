@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Egri chiziqlarni proyektiv usulda konstruksiyalash — simulyator</title>
+<style>
+:root{--ink:#111;--mut:#686d6a;--line:#e4e6e3;--bg:#fafaf8;--acc:#1f7a4f;--or:#e07b1f;--red:#c62828;--blue:#2457c5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI",system-ui,Arial,sans-serif}
+header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:18px 28px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+header span{color:var(--mut);font-size:15px}
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:calc(100vh - 62px)}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+aside{border-right:1px solid var(--line);padding:18px 22px;display:flex;flex-direction:column;gap:20px}
+@media(max-width:860px){aside{border-right:0;border-bottom:1px solid var(--line)}}
+.lab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin:0 0 8px}
+.seg{display:flex;flex-direction:column;gap:6px}
+.seg.row2{flex-direction:row;flex-wrap:wrap}
+.seg button{font:inherit;font-size:14px;padding:9px 12px;border:1px solid #d4d7d3;background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);text-align:left;min-height:40px}
+.seg button small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.seg button:hover{border-color:#9aa09c}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.seg button.on small{color:#cfd3d0}
+.row{display:grid;grid-template-columns:1fr 50px;align-items:center;gap:8px;margin:6px 0}
+.row label{font-size:14px;color:#333}
+.row output{font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.row input{grid-column:1 / span 2;width:100%;accent-color:var(--ink);margin:0}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;margin:5px 0;cursor:pointer}
+.chk input{accent-color:var(--ink);width:16px;height:16px}
+main{padding:18px 24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.stage{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+svg{display:block;width:100%;height:auto;touch-action:none;user-select:none}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:14px;padding:9px 16px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;min-height:40px}
+.btn.ghost{background:#fff;color:var(--ink);border-color:#d4d7d3}
+.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+@media(max-width:700px){.info{grid-template-columns:1fr}}
+.info div{background:#fff;padding:10px 14px}
+.info b{display:block;font-size:18px;font-weight:600}
+.info span{font-size:12px;color:var(--mut);letter-spacing:.06em}
+.steps{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.steps ol{margin:6px 0 0;padding-left:22px}
+.steps li{font-size:15px;line-height:1.5;margin:2px 0}
+.steps li.cur{font-weight:600}
+.hint{font-size:13px;color:var(--mut)}
+.warn{color:var(--red);font-size:14px;min-height:18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Egri chiziqlarni proyektiv usulda konstruksiyalash</h1>
+  <span>Berilgan shartlarga mos ikkinchi tartibli egri chiziqlar</span>
+</header>
+<div class="app">
+<aside>
+  <div>
+    <p class="lab">1 · Berilgan shartlar</p>
+    <div class="seg" id="segM">
+      <button data-m="pascal" class="on">5 ta nuqta<small>Paskal teoremasi</small></button>
+      <button data-m="steiner">3 ta nuqta va 2 ta urinma<small>Proyektiv dastalar (Shteyner)</small></button>
+      <button data-m="envelope">2 ta urinma va urinish nuqtalari<small>Proyektiv qatorlar — urinmalar o'ramasi</small></button>
+    </div>
+  </div>
+  <div id="params"></div>
+  <div>
+    <p class="lab">3 · Ko'rinish</p>
+    <label class="chk"><input type="checkbox" id="cCon" checked>Yasash chiziqlari</label>
+    <label class="chk"><input type="checkbox" id="cCurve" checked>Egri chiziq</label>
+  </div>
+  <div>
+    <p class="lab">Tayyor holatlar</p>
+    <div class="seg row2" id="segP">
+      <button data-p="e">Ellips</button>
+      <button data-p="p">Parabola</button>
+      <button data-p="h">Giperbola</button>
+    </div>
+  </div>
+  <p class="hint">Nuqtalarni sichqoncha yoki barmoq bilan surib, shartlarni o'zgartiring.</p>
+</aside>
+<main>
+  <div class="stage"><svg id="sv" viewBox="0 0 900 580"></svg></div>
+  <div class="bar">
+    <button class="btn" id="bPlay">▶ Yasash</button>
+    <button class="btn ghost" id="bStep">Keyingi nuqta</button>
+    <button class="btn ghost" id="bClear">Tozalash</button>
+    <span class="warn" id="warn"></span>
+  </div>
+  <div class="info">
+    <div><b id="iType">—</b><span>EGRI CHIZIQ TURI</span></div>
+    <div><b id="iGiven">—</b><span>BERILGAN</span></div>
+    <div><b id="iMeth">—</b><span>PROYEKTIV USUL</span></div>
+  </div>
+  <div class="steps"><p class="lab" style="margin:0">Qurish tartibi</p><ol id="steps"></ol></div>
+</main>
+</div>
+
+<script>
+"use strict";
+const NS="http://www.w3.org/2000/svg",sv=document.getElementById("sv");
+const S={m:"pascal",n:14,w:1,con:true,curve:true,phi:null,traced:[],playing:false};
+const PTS={
+  pascal:{A:[315,189],B:[371,438],C:[254,269],D:[452,150],E:[279,377]},
+  steiner:{A:[230,430],B:[680,430],T:[455,110],C:[420,325]},
+  envelope:{A:[180,460],B:[720,460],T:[450,90]},
+};
+/* ---------- geometry ---------- */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],add=(a,b)=>[a[0]+b[0],a[1]+b[1]],mulv=(a,k)=>[a[0]*k,a[1]*k];
+function inter(p1,p2,p3,p4){const d=(p1[0]-p2[0])*(p3[1]-p4[1])-(p1[1]-p2[1])*(p3[0]-p4[0]);if(Math.abs(d)<1e-9)return null;
+  const a=p1[0]*p2[1]-p1[1]*p2[0],b=p3[0]*p4[1]-p3[1]*p4[0];return [(a*(p3[0]-p4[0])-(p1[0]-p2[0])*b)/d,(a*(p3[1]-p4[1])-(p1[1]-p2[1])*b)/d];}
+const ok=p=>p&&isFinite(p[0])&&isFinite(p[1])&&Math.abs(p[0])<1e5&&Math.abs(p[1])<1e5;
+function pascal(phi){const P=PTS.pascal,{A,B,C,D,E}=P,d=[Math.cos(phi),Math.sin(phi)],A2=add(A,d);
+  const X=inter(A,B,D,E),Z=inter(C,D,A,A2);if(!X||!Z)return null;const Y=inter(B,C,X,Z);if(!Y)return null;const F=inter(E,Y,A,A2);
+  return ok(F)?{X,Y,Z,F,A2}:null;}
+function rb(A,T,B,w,u,v){const den=u*u+2*u*v*w+v*v;return {p:[(u*u*A[0]+2*u*v*w*T[0]+v*v*B[0])/den,(u*u*A[1]+2*u*v*w*T[1]+v*v*B[1])/den],den};}
+function bary(P,A,T,B){const d=(T[1]-B[1])*(A[0]-B[0])+(B[0]-T[0])*(A[1]-B[1]);
+  const a=((T[1]-B[1])*(P[0]-B[0])+(B[0]-T[0])*(P[1]-B[1]))/d,b=((B[1]-A[1])*(P[0]-B[0])+(A[0]-B[0])*(P[1]-B[1]))/d;return [a,b,1-a-b];}
+function steinerW(){const {A,B,T,C}=PTS.steiner,[al,be,ga]=bary(C,A,T,B);if(al*ga<=1e-9)return null;
+  const u=Math.sqrt(Math.abs(al)),v=Math.sqrt(Math.abs(ga));return {w:be/(2*Math.sqrt(al*ga)),phiC:Math.atan2(v,u)};}
+function fitConic(P){ // 5 points -> [a,b,c,d,e,f], normalized coordinates
+  const cx=P.reduce((s,p)=>s+p[0],0)/5,cy=P.reduce((s,p)=>s+p[1],0)/5,sc=100;
+  const M=P.map(p=>{const x=(p[0]-cx)/sc,y=(p[1]-cy)/sc;return [x*x,x*y,y*y,x,y,1];});
+  // solve M·q=0 with q[5]=... use Gaussian elimination to find nullspace (5x6)
+  const m=M.map(r=>r.slice());let piv=[],r=0;
+  for(let c=0;c<6&&r<5;c++){let best=r;for(let i=r;i<5;i++)if(Math.abs(m[i][c])>Math.abs(m[best][c]))best=i;if(Math.abs(m[best][c])<1e-10)continue;
+    [m[r],m[best]]=[m[best],m[r]];for(let i=0;i<5;i++)if(i!==r){const f=m[i][c]/m[r][c];for(let k=c;k<6;k++)m[i][k]-=f*m[r][k];}piv.push(c);r++;}
+  const free=[0,1,2,3,4,5].find(c=>!piv.includes(c));if(free===undefined)return null;
+  const q=new Array(6).fill(0);q[free]=1;piv.forEach((c,i)=>{q[c]=-m[i][free]/m[i][c];});return q;}
+function classifyQ(q){if(!q)return "—";const [a,b,c]=q,D=b*b-4*a*c,s=Math.max(Math.abs(a),Math.abs(b),Math.abs(c));
+  if(Math.abs(D)<0.02*s*s)return "Parabola";return D<0?"Ellips":"Giperbola";}
+const classW=w=>{const a=Math.abs(w);return Math.abs(a-1)<0.02?"Parabola":a<1?"Ellips":"Giperbola";};
+/* ---------- drawing helpers ---------- */
+let H="";
+const L=(a,b,st)=>{H+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" ${st}/>`;};
+function longLine(a,b,st,ext){ext=ext||2000;const d=sub(b,a),l=Math.hypot(...d)||1,u=mulv(d,1/l);L(sub(a,mulv(u,ext)),add(a,mulv(u,ext)),st);}
+const dot=(p,r,fill,st)=>{H+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${r}" fill="${fill}" ${st||""}/>`;};
+const lbl=(p,t,dx,dy,col,sz)=>{H+=`<text x="${(p[0]+(dx||10)).toFixed(1)}" y="${(p[1]+(dy||-10)).toFixed(1)}" font-size="${sz||17}" font-style="italic" font-weight="600" fill="${col||"#111"}" font-family="Cambria,'Times New Roman',serif">${t}</text>`;};
+function poly(pts,st){if(pts.length<2)return;H+=`<polyline points="${pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")}" fill="none" ${st}/>`;}
+function curvePolys(sampler,N){ // returns array of polylines, breaking on jumps/infinity
+  const out=[];let cur=[],prev=null;
+  for(let i=0;i<=N;i++){const r=sampler(i/N);
+    if(!r||!ok(r.p)||Math.abs(r.p[0]-450)>3000||Math.abs(r.p[1]-290)>3000||(prev&&prev.den!==undefined&&r.den!==undefined&&Math.sign(prev.den)!==Math.sign(r.den))){if(cur.length>1)out.push(cur);cur=[];prev=r;if(r&&ok(r.p)&&Math.abs(r.p[0]-450)<3000&&Math.abs(r.p[1]-290)<3000)cur.push(r.p);continue;}
+    if(cur.length&&Math.hypot(r.p[0]-cur[cur.length-1][0],r.p[1]-cur[cur.length-1][1])>400){out.push(cur);cur=[];}
+    cur.push(r.p);prev=r;}
+  if(cur.length>1)out.push(cur);return out;}
+const ST={con:'stroke="#a7ada9" stroke-width="1"',conD:'stroke="#a7ada9" stroke-width="1" stroke-dasharray="5 4"',curve:'stroke="#1f7a4f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"',
+  pas:'stroke="#e07b1f" stroke-width="2"',pa:'stroke="#2457c5" stroke-width="1.6"',pb:'stroke="#c62828" stroke-width="1.6"',tan:'stroke="#111" stroke-width="1.5"',env:'stroke="#6d8fd6" stroke-width="1.1"'};
+/* ---------- render ---------- */
+function render(){
+  H=`<defs><pattern id="g" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#f0f1ef" stroke-width="1"/></pattern></defs><rect width="900" height="580" fill="url(#g)"/>`;
+  const warn=document.getElementById("warn");warn.textContent="";
+  if(S.m==="pascal")rPascal();else if(S.m==="steiner")rSteiner(warn);else rEnvelope();
+  // draggable points
+  const P=PTS[S.m];
+  for(const k in P){const p=P[k];H+=`<g class="dp" data-k="${k}" style="cursor:move"><circle cx="${p[0]}" cy="${p[1]}" r="16" fill="transparent"/><circle cx="${p[0]}" cy="${p[1]}" r="6.5" fill="#fff" stroke="#111" stroke-width="2"/></g>`;
+    lbl(p,k,10,-10,"#111",20);}
+  sv.innerHTML=H;
+}
+function rPascal(){
+  const P=PTS.pascal,pts=[P.A,P.B,P.C,P.D,P.E];
+  if(S.curve)for(const pl of curvePolys(t=>{const r=pascal(t*Math.PI+1e-4);return r?{p:r.F}:null;},720))poly(pl,ST.curve);
+  // traced points
+  for(const p of S.traced)dot(p,4.2,"#1f7a4f");
+  if(S.con&&S.phi!==null){const r=pascal(S.phi);if(r){
+      longLine(P.A,P.B,ST.con);longLine(P.D,P.E,ST.con);longLine(P.C,P.D,ST.con);longLine(P.B,P.C,ST.con);
+      longLine(P.A,r.A2,ST.pa);longLine(P.E,r.Y,ST.con);
+      longLine(r.X,r.Z,ST.pas);
+      for(const [p,n] of [[r.X,"X"],[r.Y,"Y"],[r.Z,"Z"]]){if(ok(p)&&p[0]>-50&&p[0]<950&&p[1]>-50&&p[1]<630){dot(p,4,"#e07b1f");lbl(p,n,8,-8,"#e07b1f",16);}}
+      dot(r.F,6,"#c62828");lbl(r.F,"F",9,16,"#c62828",19);}}
+  const q=fitConic(pts);document.getElementById("iType").textContent=classifyQ(q);
+}
+function rSteiner(warn){
+  const P=PTS.steiner,{A,B,T,C}=P;
+  if(S.con){L(A,T,ST.tan);L(B,T,ST.tan);longLine(A,T,ST.conD);longLine(B,T,ST.conD);}
+  const sw=steinerW();
+  if(!sw){warn.textContent="C nuqta AT va BT urinmalar orasidagi sohada bo'lishi kerak.";document.getElementById("iType").textContent="—";return;}
+  const w=sw.w;
+  if(S.curve)for(const pl of curvePolys(t=>rb(A,T,B,w,Math.cos(t*Math.PI),Math.sin(t*Math.PI)),900))poly(pl,ST.curve);
+  for(const p of S.traced)dot(p,4.2,"#1f7a4f");
+  if(S.con){ // corresponding pairs
+    longLine(A,B,ST.con);longLine(A,C,ST.con);longLine(B,C,ST.con);
+    if(S.phi!==null){const X=rb(A,T,B,w,Math.cos(S.phi),Math.sin(S.phi)).p;if(ok(X)){longLine(A,X,ST.pa);longLine(B,X,ST.pb);dot(X,6,"#c62828");lbl(X,"M",9,16,"#c62828",19);}}}
+  document.getElementById("iType").textContent=classW(w);
+}
+function rEnvelope(){
+  const {A,B,T}=PTS.envelope,w=S.w;
+  if(S.con){longLine(A,T,ST.conD);longLine(B,T,ST.conD);L(A,T,ST.tan);L(B,T,ST.tan);}
+  if(S.curve)for(const pl of curvePolys(t=>rb(A,T,B,w,Math.cos(t*Math.PI),Math.sin(t*Math.PI)),900))poly(pl,ST.curve);
+  const n=S.n,k=S.traced.length;
+  for(let i=1;i<n;i++){if(i>k)break;const t=i/n;
+    const P=[((1-t)*A[0]+t*w*T[0])/((1-t)+t*w),((1-t)*A[1]+t*w*T[1])/((1-t)+t*w)],Q=[((1-t)*w*T[0]+t*B[0])/((1-t)*w+t),((1-t)*w*T[1]+t*B[1])/((1-t)*w+t)];
+    if(!ok(P)||!ok(Q))continue;
+    if(S.con){const dd=sub(Q,P),ll=Math.hypot(...dd)||1,uu=mulv(dd,40/ll);L(sub(P,uu),add(Q,uu),ST.env);dot(P,3.4,"#2457c5");dot(Q,3.4,"#c62828");
+      if(n<=16){lbl(P,String(i),-16,-6,"#2457c5",13);lbl(Q,String(i)+"′",6,-6,"#c62828",13);}}
+    const M=rb(A,T,B,w,1-t,t).p;dot(M,3.6,"#1f7a4f");}
+  document.getElementById("iType").textContent=classW(w);
+}
+/* ---------- texts ---------- */
+const INFO={
+  pascal:{given:"5 ta nuqta",meth:"Paskal teoremasi",steps:[
+    "A, B, C, D, E nuqtalar beriladi; oltinchi nuqta F izlanadi (ABCDEF — oltiburchak).",
+    "A nuqta orqali ixtiyoriy to'g'ri chiziq o'tkaziladi — bu FA tomon.",
+    "X = AB ∩ DE va Z = CD ∩ FA nuqtalar topiladi.",
+    "XZ — Paskal to'g'ri chizig'i. Y = BC ∩ XZ.",
+    "EY to'g'ri chiziq FA bilan kesishgan nuqta — izlangan F nuqta.",
+    "A orqali o'tgan chiziqni burib, yangi nuqtalar topiladi va silliq tutashtiriladi."]},
+  steiner:{given:"A, B, C nuqtalar; A va B dagi urinmalar",meth:"Proyektiv dastalar",steps:[
+    "A va B nuqtalarda urinmalar o'tkaziladi, ular T nuqtada kesishadi.",
+    "A va B markazli to'g'ri chiziqlar dastalari olinadi.",
+    "Mos juftlar: AT ↔ BA,  AB ↔ BT,  AC ↔ BC — dastalar proyektiv bog'lanadi.",
+    "A dastadagi ixtiyoriy chiziqqa B dastadagi mos chiziq topiladi.",
+    "Mos chiziqlarning kesishish nuqtasi M egri chiziqqa tegishli.",
+    "M nuqtalar ketma-ket topilib, lekalo bilan tutashtiriladi."]},
+  envelope:{given:"2 ta urinma (TA, TB) va A, B urinish nuqtalari",meth:"Proyektiv nuqtalar qatorlari",steps:[
+    "T nuqtadan TA va TB urinmalar o'tkaziladi, A va B — urinish nuqtalari.",
+    "AT va TB kesmalarda proyektiv mos nuqtalar qatori belgilanadi: 1, 2, 3 … va 1′, 2′, 3′ …",
+    "k = 1 da bo'linishlar teng (parabola), k ≠ 1 da notekis (ellips yoki giperbola).",
+    "Mos nuqtalar 1–1′, 2–2′, … to'g'ri chiziqlar bilan tutashtiriladi — ular izlangan egri chiziqqa urinmalar.",
+    "Urinmalar o'ramasi bo'ylab egri chiziq silliq chiziladi."]},
+};
+function texts(){const I=INFO[S.m];document.getElementById("iGiven").textContent=I.given;document.getElementById("iMeth").textContent=I.meth;
+  document.getElementById("steps").innerHTML=I.steps.map(s=>`<li>${s}</li>`).join("");}
+function params(){
+  const h=document.getElementById("params");
+  let html=`<p class="lab">2 · Parametrlar</p>`;
+  html+=`<div class="row"><label>Quriladigan nuqtalar soni</label><output id="oN">${S.n}</output><input type="range" id="rN" min="6" max="40" step="1" value="${S.n}" aria-label="Nuqtalar soni"></div>`;
+  if(S.m==="envelope")html+=`<div class="row"><label>Proyektivlik koeffitsiyenti k</label><output id="oW">${S.w.toFixed(2)}</output><input type="range" id="rW" min="0.3" max="2.5" step="0.01" value="${S.w}" aria-label="Proyektivlik koeffitsiyenti"></div>
+    <p class="hint">k &lt; 1 — ellips, k = 1 — parabola, k &gt; 1 — giperbola</p>`;
+  h.innerHTML=html;
+  document.getElementById("rN").oninput=e=>{S.n=+e.target.value;document.getElementById("oN").textContent=S.n;clear();};
+  const rW=document.getElementById("rW");if(rW)rW.oninput=e=>{let v=+e.target.value;if(Math.abs(v-1)<0.03)v=1;S.w=v;document.getElementById("oW").textContent=v.toFixed(2);clear(true);};
+}
+/* ---------- animation ---------- */
+function stepPoint(){
+  const n=S.n;
+  if(S.m==="envelope"){const k=S.traced.length;if(k<n-1){S.traced.push(1);render();return true;}return false;}
+  if(S.k===undefined||S.k>=n){if(S.k>=n)return false;S.k=0;}
+  const k=S.k;S.k++;
+  const phi=(k+0.5)/n*Math.PI;S.phi=phi;let p=null;
+  if(S.m==="pascal"){const r=pascal(phi);if(r)p=r.F;}
+  else{const sw=steinerW();if(!sw)return false;p=rb(PTS.steiner.A,PTS.steiner.T,PTS.steiner.B,sw.w,Math.cos(phi),Math.sin(phi)).p;}
+  if(ok(p)&&Math.abs(p[0])<5000&&Math.abs(p[1])<5000)S.traced.push(p);
+  render();return S.k<n;
+}
+let timer=null;
+function play(){if(timer){clearInterval(timer);timer=null;document.getElementById("bPlay").textContent="▶ Yasash";return;}
+  clear(true);S.curve=false;document.getElementById("cCurve").checked=false;
+  document.getElementById("bPlay").textContent="⏸ To'xtatish";
+  timer=setInterval(()=>{const more=stepPoint();if(!more){clearInterval(timer);timer=null;S.curve=true;document.getElementById("cCurve").checked=true;S.phi=null;render();document.getElementById("bPlay").textContent="▶ Yasash";}},Math.max(120,1800/S.n));}
+function clear(keep){S.traced=[];S.k=0;S.phi=null;if(S.m==="envelope"&&!keep){}render();}
+document.getElementById("bPlay").onclick=play;
+document.getElementById("bStep").onclick=()=>{if(S.m!=="envelope"&&S.k>=S.n){S.traced=[];S.k=0;}if(S.m==="envelope"&&S.traced.length>=S.n-1)S.traced=[];stepPoint();};
+document.getElementById("bClear").onclick=()=>{S.traced=[];S.k=0;S.phi=null;render();};
+document.getElementById("cCon").onchange=e=>{S.con=e.target.checked;render();};
+document.getElementById("cCurve").onchange=e=>{S.curve=e.target.checked;render();};
+document.querySelectorAll("#segM button").forEach(b=>b.onclick=()=>{S.m=b.dataset.m;document.querySelectorAll("#segM button").forEach(x=>x.classList.toggle("on",x===b));
+  if(timer){clearInterval(timer);timer=null;document.getElementById("bPlay").textContent="▶ Yasash";}
+  S.traced=[];S.k=0;S.phi=null;S.curve=true;document.getElementById("cCurve").checked=true;if(S.m==="envelope")S.traced=Array(S.n-1).fill(1);params();texts();render();});
+const PRE={
+  pascal:{e:{A:[315,189],B:[371,438],C:[254,269],D:[452,150],E:[279,377]},p:{A:[200,95],B:[290,316.4],C:[450,470],D:[610,316.4],E:[700,95]},h:{A:[200,100],B:[330,260],C:[620,250],D:[720,90],E:[260,480]}},
+  steiner:{e:{A:[230,430],B:[680,430],T:[455,110],C:[420,325]},p:{A:[230,430],B:[680,430],T:[455,110],C:[455,270]},h:{A:[230,430],B:[680,430],T:[455,110],C:[470,215]}},
+  envelope:{e:0.55,p:1,h:1.8},
+};
+document.querySelectorAll("#segP button").forEach(b=>b.onclick=()=>{const k=b.dataset.p;
+  if(S.m==="envelope"){S.w=PRE.envelope[k];params();S.traced=Array(S.n-1).fill(1);}
+  else{const src=PRE[S.m][k];for(const q in src)PTS[S.m][q]=src[q].slice();S.traced=[];S.k=0;S.phi=null;}
+  if(S.m==="steiner"&&k==="p"){ // make C exactly the parabola point at t=1/2: C = (A+2T+B)/4
+    const {A,B,T}=PTS.steiner;PTS.steiner.C=[(A[0]+2*T[0]+B[0])/4,(A[1]+2*T[1]+B[1])/4];}
+  render();});
+/* ---------- dragging ---------- */
+let drag=null;
+function svgPt(e){const p=sv.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(sv.getScreenCTM().inverse());return [q.x,q.y];}
+sv.addEventListener("pointerdown",e=>{const g=e.target.closest(".dp");if(!g)return;drag=g.dataset.k;sv.setPointerCapture(e.pointerId);e.preventDefault();});
+sv.addEventListener("pointermove",e=>{if(!drag)return;const p=svgPt(e);PTS[S.m][drag]=[Math.max(10,Math.min(890,p[0])),Math.max(10,Math.min(570,p[1]))];
+  if(S.m!=="envelope"){S.traced=[];S.k=0;S.phi=null;}render();});
+sv.addEventListener("pointerup",()=>{drag=null;});
+params();texts();render();
+window.__S=S;window.__PTS=PTS;window.__render=render;
+</script>
+</body>
+</html>
